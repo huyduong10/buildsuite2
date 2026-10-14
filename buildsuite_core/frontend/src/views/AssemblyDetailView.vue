@@ -1,0 +1,557 @@
+<script setup>
+// Assembly detail — view / edit (modal) / delete + components child-table grid.
+
+import { computed, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
+import { useFormErrors } from "@/composables/useFormErrors";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import { __ } from "@/utils/translate";
+import { showToast } from "@/utils/appToast";
+import { createDataAdapter } from "@/data/adapters";
+import { fmtINR } from "@/utils/format";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskTextarea from "@/components/desk/DeskTextarea.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+
+const props = defineProps({ id: String });
+const router = useRouter();
+const confirmDialog = useConfirm();
+const { errors, applyServerErrors, setErrors } = useFormErrors({
+	assembly_name: "assemblyName",
+	uom: "uom",
+});
+const adapter = createDataAdapter(useDataStore());
+const { canEdit, canDelete } = usePermissions();
+
+const resource = adapter.read("Assembly", props.id, { fields: ["*"] });
+const doc = computed(() => resource?.doc || null);
+
+const breadcrumbs = computed(() => [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Assembly"), to: "/assembly" },
+	{ label: doc.value?.assembly_name || props.id },
+]);
+
+const cards = computed(() => {
+	const d = doc.value;
+	if (!d) return [];
+	return [
+		{ label: __("Code"), value: d.assembly_code, cls: "font-mono" },
+		{ label: __("Category"), value: d.category || "—" },
+		{ label: __("Unit"), value: d.uom },
+		{
+			label: __("Rate / unit (live)"),
+			value: fmtINR(d.rate_per_unit),
+			cls: "font-medium tabular-nums",
+		},
+	];
+});
+
+const editing = ref(false);
+const saving = ref(false);
+const form = ref({});
+
+function snapshot() {
+	const d = doc.value;
+	if (!d) return {};
+	return {
+		assemblyName: d.assembly_name || "",
+		category: d.category || "",
+		uom: d.uom || "",
+		notes: d.notes || "",
+	};
+}
+watch(
+	doc,
+	(v) => {
+		if (v && !editing.value) form.value = snapshot();
+	},
+	{ immediate: true },
+);
+
+function startEdit() {
+	form.value = snapshot();
+	setErrors({});
+	editing.value = true;
+}
+function cancelEdit() {
+	editing.value = false;
+}
+function validate() {
+	const e = {};
+	if (!form.value.assemblyName?.trim()) e.assemblyName = __("Name is required");
+	if (!form.value.uom) e.uom = __("Unit is required");
+	setErrors(e);
+	return Object.keys(e).length === 0;
+}
+async function saveEdit() {
+	if (!validate()) return;
+	saving.value = true;
+	try {
+		await adapter.update("Assembly", props.id, {
+			assembly_name: form.value.assemblyName.trim(),
+			category: form.value.category,
+			uom: form.value.uom,
+			notes: form.value.notes,
+		});
+		resource?.reload?.();
+		editing.value = false;
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to update assembly"), "error");
+	} finally {
+		saving.value = false;
+	}
+}
+
+async function onDelete() {
+	const ok = await confirmDialog({
+		title: __("Delete assembly"),
+		message: __('Delete "{0}" ({1})? This cannot be undone.', [
+			doc.value?.assembly_name,
+			doc.value?.assembly_code,
+		]),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await adapter.remove("Assembly", props.id);
+		router.push("/assembly");
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to delete assembly"), "error");
+	}
+}
+
+// Components child table. We send only resource + coefficient; the server
+// computes rate / amount / rate_per_unit / component_count on save.
+const components = computed(() => doc.value?.components || []);
+const savingComponents = ref(false);
+const addingRow = ref(false);
+const newRow = reactive({ resource: "", coefficient: 1, remarks: "" });
+
+// Rate-master options for the picker — grouped by category, rate as a hint.
+const rateMastersRes = useDocTypeList("Construction Rate Master", {
+	fields: ["name", "rate_name", "category", "current_rate", "uom"],
+	filters: [["disabled", "=", 0]],
+	orderBy: "category asc",
+	pageLength: 0,
+	cache: "buildsuite-rate-master-options",
+});
+const rateMasterOptions = computed(() =>
+	(rateMastersRes.data || []).map((r) => ({
+		value: r.name,
+		label: `${r.name} · ${r.rate_name}`,
+		group: r.category,
+		hint: __("{0} per {1}", [fmtINR(r.current_rate), r.uom]),
+	})),
+);
+
+// Add-row preview — unit/rate from the picked resource (server recomputes on save).
+const newRowResource = computed(
+	() => (rateMastersRes.data || []).find((r) => r.name === newRow.resource) || null,
+);
+const newRowAmount = computed(
+	() => (Number(newRow.coefficient) || 0) * (newRowResource.value?.current_rate || 0),
+);
+
+// Keep each child `name` so Frappe updates rows in place, not delete + recreate.
+function currentRows() {
+	return components.value.map((r) => ({
+		name: r.name,
+		resource: r.resource,
+		coefficient: r.coefficient,
+		remarks: r.remarks || "",
+	}));
+}
+
+async function persistComponents(rows) {
+	savingComponents.value = true;
+	try {
+		await adapter.update("Assembly", props.id, { components: rows });
+		await resource?.reload?.();
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to update components"), "error");
+	} finally {
+		savingComponents.value = false;
+	}
+}
+
+function startAddRow() {
+	Object.assign(newRow, { resource: "", coefficient: 1, remarks: "" });
+	addingRow.value = true;
+}
+function cancelAddRow() {
+	addingRow.value = false;
+}
+async function saveAddRow() {
+	if (!newRow.resource || (Number(newRow.coefficient) || 0) < 0) return;
+	await persistComponents([
+		...currentRows(),
+		{
+			resource: newRow.resource,
+			coefficient: Number(newRow.coefficient) || 0,
+			remarks: newRow.remarks,
+		},
+	]);
+	cancelAddRow();
+}
+
+function changeCoefficient(index, value) {
+	const rows = currentRows();
+	if (!rows[index]) return;
+	rows[index].coefficient = Number(value) || 0;
+	persistComponents(rows);
+}
+
+async function removeComponent(index) {
+	const ok = await confirmDialog({
+		title: __("Remove component"),
+		message: __("Remove this component from the assembly?"),
+		confirmLabel: __("Remove"),
+		destructive: true,
+	});
+	if (!ok) return;
+	const rows = currentRows().filter((_, i) => i !== index);
+	persistComponents(rows);
+}
+</script>
+
+<template>
+	<DeskPage
+		v-if="doc"
+		:title="doc.assembly_name"
+		:subtitle="__('{0} · per {1}', [doc.assembly_code, doc.uom])"
+		:breadcrumbs="breadcrumbs"
+		:status="doc.category"
+	>
+		<template #actions>
+			<button
+				v-if="canEdit('assembly')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				@click="startEdit"
+			>
+				{{ __("Edit") }}
+			</button>
+			<button
+				v-if="canDelete('assembly')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px"
+				@click="onDelete"
+			>
+				{{ __("Delete") }}
+			</button>
+		</template>
+
+		<!-- Headline strip — code / category / unit / rate -->
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+			<div
+				v-for="c in cards"
+				:key="c.label"
+				class="bg-white border border-ink-200 px-3 py-2"
+				style="border-radius: 6px"
+			>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ c.label }}
+				</div>
+				<div class="text-sm text-ink-900 mt-0.5" :class="c.cls">{{ c.value }}</div>
+			</div>
+		</div>
+
+		<!-- Notes -->
+		<div
+			v-if="doc.notes"
+			class="mb-4 px-3 py-2 bg-white border border-ink-200"
+			style="border-radius: 6px"
+		>
+			<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium mb-1">
+				{{ __("Notes") }}
+			</div>
+			<div class="text-sm text-ink-800 leading-snug whitespace-pre-line">
+				{{ doc.notes }}
+			</div>
+		</div>
+
+		<!-- Components child table -->
+		<section>
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<div class="text-xs text-ink-500">
+					<span class="text-ink-900 font-medium">{{
+						__(
+							components.length === 1 ? "{0} component" : "{0} components",
+							[components.length],
+						)
+					}}</span>
+					{{ __("· linked to Rate Master · coefficient × rate") }}
+				</div>
+				<button
+					v-if="!addingRow && canEdit('assembly')"
+					type="button"
+					class="desk-save-btn"
+					:disabled="savingComponents"
+					@click="startAddRow"
+				>
+					{{ __("+ Add Component") }}
+				</button>
+			</div>
+
+			<div class="bg-white border border-ink-200" style="border-radius: 8px">
+				<!-- Header strip -->
+				<div
+					class="grid bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+					style="grid-template-columns: minmax(260px, 1fr) 110px 60px 110px 110px 60px"
+				>
+					<div class="px-3 py-1.5">{{ __("Resource") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Coefficient") }}</div>
+					<div class="px-3 py-1.5">{{ __("Unit") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Rate") }}</div>
+					<div class="px-3 py-1.5 text-right whitespace-nowrap">{{ __("Amount") }}</div>
+					<div class="px-3 py-1.5"></div>
+				</div>
+
+				<!-- Existing rows -->
+				<div
+					v-for="(row, i) in components"
+					:key="row.name || i"
+					class="grid border-b border-ink-100 last:border-b-0 items-center text-sm"
+					style="grid-template-columns: minmax(260px, 1fr) 110px 60px 110px 110px 60px"
+				>
+					<div class="px-3 py-2">
+						<DeskLink :to="`/rate-master/${row.resource}`" class="text-xs">{{
+							row.resource_name || row.resource
+						}}</DeskLink>
+						<div v-if="row.remarks" class="text-[11px] text-ink-500 mt-0.5">
+							{{ row.remarks }}
+						</div>
+					</div>
+					<div class="px-2 py-1">
+						<DeskInput
+							:model-value="row.coefficient"
+							type="number"
+							:min="0"
+							:step="0.01"
+							:disabled="savingComponents"
+							@change="(e) => changeCoefficient(i, e.target.value)"
+						/>
+					</div>
+					<div class="px-3 py-2 text-xs text-ink-700">{{ row.uom || "—" }}</div>
+					<div class="px-3 py-2 text-right text-sm tabular-nums text-ink-700">
+						{{ fmtINR(row.rate) }}
+					</div>
+					<div
+						class="px-3 py-2 text-right text-sm font-medium tabular-nums text-ink-900"
+					>
+						{{ fmtINR(row.amount) }}
+					</div>
+					<div class="px-2 py-1 text-right">
+						<button
+							v-if="canEdit('assembly')"
+							type="button"
+							class="text-ink-400 hover:text-danger-700 text-base leading-none"
+							:title="__('Remove')"
+							:disabled="savingComponents"
+							@click="removeComponent(i)"
+						>
+							×
+						</button>
+					</div>
+				</div>
+
+				<!-- Empty state -->
+				<div
+					v-if="!components.length && !addingRow"
+					class="px-3 py-4 text-xs text-ink-500"
+				>
+					{{ __("No components yet — add one to price this assembly.") }}
+				</div>
+
+				<!-- Add row -->
+				<div
+					v-if="addingRow"
+					class="grid border-t border-ink-200 items-start text-sm bg-brand-50"
+					style="grid-template-columns: minmax(260px, 1fr) 110px 60px 110px 110px 60px"
+				>
+					<div class="px-2 py-2">
+						<DeskSearchableSelect
+							v-model="newRow.resource"
+							:options="rateMasterOptions"
+							:placeholder="__('Pick a rate master…')"
+							:search-placeholder="__('Search rate master…')"
+						/>
+						<div class="mt-1">
+							<DeskInput v-model="newRow.remarks" :placeholder="__('Remarks (optional)')" />
+						</div>
+					</div>
+					<div class="px-2 py-2">
+						<DeskInput
+							v-model="newRow.coefficient"
+							type="number"
+							:min="0"
+							:step="0.01"
+						/>
+					</div>
+					<div class="px-3 py-2 text-xs text-ink-700">
+						{{ newRowResource?.uom || "—" }}
+					</div>
+					<div class="px-3 py-2 text-right text-sm tabular-nums text-ink-700">
+						{{ newRowResource ? fmtINR(newRowResource.current_rate) : __("— auto —") }}
+					</div>
+					<div
+						class="px-3 py-2 text-right text-sm font-medium tabular-nums text-ink-900"
+					>
+						{{ newRowResource ? fmtINR(newRowAmount) : __("— auto —") }}
+					</div>
+					<div class="px-2 py-2 flex items-center gap-1 justify-end">
+						<button
+							v-if="canEdit('assembly')"
+							type="button"
+							class="desk-save-btn !px-2 !py-1 !text-[11px]"
+							:disabled="savingComponents"
+							@click="saveAddRow"
+						>
+							{{ __("Add") }}
+						</button>
+						<button
+							type="button"
+							class="text-ink-400 hover:text-danger-700 text-base leading-none"
+							@click="cancelAddRow"
+						>
+							×
+						</button>
+					</div>
+				</div>
+
+				<!-- Footer total -->
+				<div
+					class="grid border-t border-ink-200 bg-ink-50 text-sm"
+					style="grid-template-columns: minmax(260px, 1fr) 110px 60px 110px 110px 60px"
+				>
+					<div
+						class="px-3 py-2 text-right text-[11px] uppercase tracking-wider text-ink-500 font-medium"
+						style="grid-column: 1 / span 4"
+					>
+						{{ __("Rate / unit (Assembly)") }}
+					</div>
+					<div class="px-3 py-2 text-right font-semibold text-ink-900 tabular-nums">
+						{{ fmtINR(doc.rate_per_unit) }}
+					</div>
+					<div></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Edit modal -->
+		<Teleport to="body">
+			<div
+				v-if="editing"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="cancelEdit"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-2xl shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between flex-shrink-0 bg-white"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div class="min-w-0 flex-1">
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Edit assembly") }}</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5 truncate">
+								{{ doc.assembly_name }}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none"
+							:aria-label="__('Close')"
+							@click="cancelEdit"
+						>
+							×
+						</button>
+					</header>
+
+					<div class="p-5 overflow-y-auto flex-1">
+						<DeskSection :title="__('Assembly details')">
+							<DeskField
+								:label="__('Code')"
+								:hint="__('The assembly\'s identifier — not editable.')"
+							>
+								<span class="text-sm font-mono text-ink-700">{{
+									doc.assembly_code
+								}}</span>
+							</DeskField>
+							<DeskField :label="__('Name')" required :error="errors.assemblyName">
+								<DeskInput v-model="form.assemblyName" />
+							</DeskField>
+							<DeskField
+								:label="__('Unit (per)')"
+								required
+								:hint="__('The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.')"
+								:error="errors.uom"
+							>
+								<DeskLinkPicker
+									v-model="form.uom"
+									doctype="UOM"
+									label-field="name"
+									value-field="name"
+									:placeholder="__('— Select unit —')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Category')">
+								<DeskLinkPicker
+									v-model="form.category"
+									doctype="Assembly Category"
+									label-field="name"
+									value-field="name"
+									:placeholder="__('— Select category —')"
+								/>
+							</DeskField>
+							<DeskField :label="__('Notes')">
+								<DeskTextarea v-model="form.notes" :rows="3" />
+							</DeskField>
+						</DeskSection>
+					</div>
+
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2 flex-shrink-0 bg-white"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							:disabled="saving"
+							@click="cancelEdit"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							v-if="canEdit('assembly')"
+							type="button"
+							class="desk-save-btn"
+							:disabled="saving"
+							@click="saveEdit"
+						>
+							{{ saving ? __("Saving…") : __("Save") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+		</Teleport>
+	</DeskPage>
+
+	<div v-else class="px-3 py-2 text-sm text-ink-500">{{ __("Loading assembly…") }}</div>
+</template>

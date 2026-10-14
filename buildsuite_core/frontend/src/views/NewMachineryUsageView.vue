@@ -1,0 +1,210 @@
+<script setup>
+// Log Machinery Usage — mirrors the demo. Picking a machine auto-fills rate + unit.
+
+import { reactive, ref, computed, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { createDataAdapter } from "@/data/adapters";
+import { fmtINR, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskForm from "@/components/desk/DeskForm.vue";
+import DeskActionBar from "@/components/desk/DeskActionBar.vue";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+
+const router = useRouter();
+const route = useRoute();
+const adapter = createDataAdapter(useDataStore());
+const { canCreate } = usePermissions();
+
+// Active only. Own cache key — the detail view's picker still lists every machine.
+const machineryRes = useDocTypeList("Machinery", {
+	fields: ["name", "machinery_name", "machinery_type", "ownership", "rate", "rate_unit"],
+	filters: [["status", "=", "Active"]],
+	orderBy: "machinery_name asc",
+	pageLength: 0,
+	cache: "buildsuite-machinery-active-options",
+});
+const machineryOptions = computed(() =>
+	(machineryRes.data || []).map((m) => ({
+		value: m.name,
+		label: m.machinery_name,
+		hint: [m.machinery_type, __(m.ownership)].filter(Boolean).join(" · "),
+	}))
+);
+// Project picker is company-scoped to the switcher's working company (per-company projects).
+const companyFilter = activeCompanyFilter();
+
+const today = new Date().toISOString().slice(0, 10);
+const form = reactive({
+	machine: route.query.machine || "",
+	project: "",
+	task: "",
+	date: today,
+	quantity: 1,
+	unit: "Days",
+	rate: 0,
+	fuel_cost: 0,
+});
+const { errors, applyServerErrors, setErrors } = useFormErrors({
+	machine: "machine",
+	project: "project",
+});
+const saving = ref(false);
+
+// Auto-fill rate + unit from the picked machine (also on ?machine= prefill).
+const selectedMachine = computed(() =>
+	(machineryRes.data || []).find((m) => m.name === form.machine)
+);
+watch(
+	selectedMachine,
+	(m) => {
+		if (m) {
+			form.rate = m.rate || 0;
+			form.unit = m.rate_unit === "Hour" ? "Hours" : "Days";
+		}
+	},
+	{ immediate: true }
+);
+
+// Changing the project clears the task — the task picker is scoped to the project, so a
+// stale cross-project task must never linger (the server rejects it too).
+watch(
+	() => form.project,
+	() => {
+		form.task = "";
+	}
+);
+
+const total = computed(
+	() => (Number(form.quantity) || 0) * (Number(form.rate) || 0) + (Number(form.fuel_cost) || 0)
+);
+
+function validate() {
+	const e = {};
+	if (!form.machine) e.machine = __("Machine is required.");
+	if (!form.project) e.project = __("Project is required.");
+	setErrors(e);
+	return Object.keys(e).length === 0;
+}
+
+function onCancel() {
+	router.back();
+}
+
+async function onSave() {
+	if (!validate()) return;
+	saving.value = true;
+	try {
+		const res = await adapter.create("Machinery Usage", {
+			machine: form.machine,
+			project: form.project,
+			task: form.task,
+			date: form.date,
+			quantity: form.quantity,
+			unit: form.unit,
+			rate: form.rate,
+			fuel_cost: form.fuel_cost,
+		});
+		router.push(`/machinery-usage/${res.name}`);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to log usage"), "error");
+	} finally {
+		saving.value = false;
+	}
+}
+
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Equipment"), to: "/equipment" },
+	{ label: __("Machinery Usage"), to: "/machinery-usage" },
+	{ label: __("New") },
+];
+</script>
+
+<template>
+	<DeskPage :title="__('Log Machinery Usage')" :breadcrumbs="breadcrumbs">
+		<div
+			v-if="!canCreate('machineryUsage')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			{{ __("You don't have permission to log machinery usage.") }}
+		</div>
+		<DeskForm v-else>
+			<template #action-bar>
+				<DeskActionBar
+					:save-label="saving ? __('Saving…') : __('Log usage')"
+					:saving="saving"
+					@save="onSave"
+					@cancel="onCancel"
+				/>
+			</template>
+
+			<DeskSection :title="__('Usage')" :cols="3">
+				<DeskField :label="__('Machine')" required :error="errors.machine">
+					<DeskSearchableSelect
+						v-model="form.machine"
+						:options="machineryOptions"
+						:placeholder="__('Pick a machine…')"
+						:search-placeholder="__('Search machine…')"
+					/>
+				</DeskField>
+				<DeskField :label="__('Project')" required :error="errors.project">
+					<DeskLinkPicker
+						v-model="form.project"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						:filters="companyFilter"
+						:placeholder="__('Pick a project…')"
+						:search-placeholder="__('Search project…')"
+					/>
+				</DeskField>
+				<DeskField :label="__('Task')">
+					<DeskLinkPicker
+						v-model="form.task"
+						doctype="Task"
+						label-field="subject"
+						value-field="name"
+						:filters="form.project ? [['project', '=', form.project]] : []"
+						:placeholder="__('Task…')"
+					/>
+				</DeskField>
+
+				<DeskField :label="__('Date')"><DeskInput v-model="form.date" type="date" /></DeskField>
+				<DeskField :label="__('Quantity')">
+					<DeskInput v-model.number="form.quantity" type="number" min="0" step="0.5" />
+				</DeskField>
+				<DeskField :label="__('Unit')">
+					<DeskSelect v-model="form.unit">
+						<option value="Days">{{ __("Days") }}</option>
+						<option value="Hours">{{ __("Hours") }}</option>
+					</DeskSelect>
+				</DeskField>
+
+				<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
+					<DeskInput v-model.number="form.rate" type="number" min="0" />
+				</DeskField>
+				<DeskField :label="`${__('Fuel cost')} (${currencySymbol()})`">
+					<DeskInput v-model.number="form.fuel_cost" type="number" min="0" />
+				</DeskField>
+				<DeskField :label="__('Total')">
+					<div class="text-sm text-ink-900 font-medium tabular-nums pt-1.5">
+						{{ fmtINR(total) }}
+					</div>
+				</DeskField>
+			</DeskSection>
+		</DeskForm>
+	</DeskPage>
+</template>

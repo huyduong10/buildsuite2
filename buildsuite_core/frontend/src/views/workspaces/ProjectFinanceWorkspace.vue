@@ -1,0 +1,218 @@
+<script setup>
+// Project Finance workspace landing — standard workspace pattern (like Site
+// Execution / Subcontract): a prominent Overview CTA + grouped WorkspaceShortcut
+// tiles that open each function in its own page. Role-gated via the session roles
+// (site roles see only Petty Cash + Expenses), mirroring the prototype's
+// store.visibleFinanceTabs. Every section is client-side dummy data except Petty
+// Cash, which is live. The Cash & bank figure on the Overview CTA is live and
+// company-scoped (finance_report.financial_position), not the finance mock.
+import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
+import { usePermissions } from "@/composables/usePermissions";
+import { useSessionStore } from "@/stores/session";
+import { getFinancialPosition } from "@/data/financeReportApi";
+import { useActiveCompany } from "@/composables/useActiveCompany";
+import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import WorkspaceRecordsSection from "@/components/workspaces/WorkspaceRecordsSection.vue";
+import WorkspaceReportsSection from "@/components/workspaces/WorkspaceReportsSection.vue";
+import WorkspaceShortcut from "@/components/WorkspaceShortcut.vue";
+import { fmtINR } from "@/utils/format";
+import { __, currentLang } from "@/utils/translate";
+
+const { canRead } = usePermissions();
+const session = useSessionStore();
+const activeCompany = useActiveCompany();
+
+const today = new Date().toLocaleDateString(currentLang(), {
+	weekday: "long",
+	month: "short",
+	day: "numeric",
+});
+
+// Per-persona gating — each tile follows the persona's read cap, now derived from the
+// backend DocPerms (usePermissions → api.permission.get_resource_permissions), so the
+// workspace shows exactly what the backend grants (e.g. Foreman reads Customer and Petty
+// Cash / Expenses, but not Invoices / Bills / Payments). This is the cap-gating every
+// other workspace already uses; Project Finance was the last outlier still gating by
+// coarse session-role buckets, which is why a Foreman (or Procurement, Store Keeper, …)
+// saw fewer tiles than the backend grants.
+
+// Per the prototype's Site Execution rule (S50), DocType shortcut tiles render WITHOUT a
+// description — only the Reports group below carries subtext.
+const TRANSACTIONS = [
+	{ section: "petty-cash", icon: "hand-coins", label: "Petty Cash", cap: "pettyCash" },
+	{ section: "expenses", icon: "receipt", label: "Expenses", cap: "expense" },
+	{ section: "invoices", icon: "file-text", label: "Invoices", cap: "salesInvoice" },
+	{ section: "bills", icon: "banknote", label: "Bills", cap: "supplierBill" },
+	{ section: "payments", icon: "refresh-ccw", label: "Payments", cap: "advance" },
+];
+const MASTERS = [
+	{ section: "customers", icon: "users-round", label: "Customers", cap: "customer" },
+	{ section: "suppliers", icon: "building-2", label: "Suppliers", cap: "supplier" },
+];
+const txTiles = computed(() => TRANSACTIONS.filter((t) => canRead(t.cap)));
+const masterTiles = computed(() => MASTERS.filter((t) => canRead(t.cap)));
+// The Financial Overview (company-wide cash & bank) and the Reports group are for
+// ledger-level finance personas — those who can read Invoices / Bills / Payments.
+// Site personas (Foreman / Site Engineer) still get their permitted tiles, but not
+// the company-wide overview.
+const hasLedgerFinance = computed(
+	() => canRead("salesInvoice") || canRead("supplierBill") || canRead("advance"),
+);
+const showOverview = computed(() => hasLedgerFinance.value);
+
+// The Reports group follows the per-report backend permission (report_access anchors →
+// session.access.reportRoutes), NOT the coarse ledger-finance caps: a persona granted an
+// individual report (e.g. HR Manager on Profit & Loss) must see it even without invoice /
+// bill / payment access. Any permitted Project Finance report route enables the group; the
+// section itself renders only the tiles the backend returns.
+const hasReports = computed(() =>
+	(session.access?.reportRoutes || []).some((r) => r.startsWith("/project-finance/report/")),
+);
+
+// Cash & bank on the Overview CTA — live GL balances for the active company (bank + cash),
+// the same source the Financial Position report uses. Fetched only when the tile is shown,
+// and re-fetched when the working company changes.
+const cashBank = ref(0);
+async function loadCashBank() {
+	if (!showOverview.value) return;
+	try {
+		const fp = await getFinancialPosition(activeCompany.value);
+		cashBank.value = (Number(fp?.have?.bank) || 0) + (Number(fp?.have?.cash) || 0);
+	} catch {
+		cashBank.value = 0;
+	}
+}
+watch([activeCompany, showOverview], loadCashBank, { immediate: true });
+// A persona with only a permitted report (no transaction / master tiles, no ledger overview)
+// still has access to the workspace — its Reports group.
+const noAccess = computed(
+	() =>
+		!txTiles.value.length &&
+		!masterTiles.value.length &&
+		!showOverview.value &&
+		!hasReports.value,
+);
+</script>
+
+<template>
+	<div class="bg-white min-h-full">
+		<div class="max-w-6xl mx-auto px-6 py-8">
+			<!-- Title strip -->
+			<div class="mb-5">
+				<div class="text-xs text-ink-500 mb-1">{{ today }}</div>
+				<h1 class="text-2xl font-semibold text-ink-900">{{ __("Project Finance") }}</h1>
+			</div>
+
+			<div
+				v-if="noAccess"
+				class="bg-warning-50 border border-warning-200 rounded-lg px-4 py-6 text-sm text-warning-700"
+			>
+				{{ __("You don't have access to Project Finance.") }}
+			</div>
+
+			<template v-else>
+				<!-- Overview CTA -->
+				<RouterLink
+					v-if="showOverview"
+					to="/project-finance/overview"
+					class="mb-6 block bg-brand-50 border border-brand-200 hover:border-brand-400 hover:shadow-sm p-4 transition-all group rounded-lg"
+				>
+					<div class="flex items-center gap-4">
+						<div
+							class="w-11 h-11 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0"
+						>
+							<svg
+								class="w-[22px] h-[22px]"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.75"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								v-html="getWorkspaceIconPath('wallet')"
+							/>
+						</div>
+						<div class="flex-1 min-w-0">
+							<div
+								class="text-base font-semibold text-ink-900 group-hover:text-brand-700 transition-colors"
+							>
+								{{ __("Financial Overview") }}
+							</div>
+							<div class="text-xs text-ink-600 mt-0.5">
+								{{ __("Cash & bank balances, quick actions and alerts.") }}
+							</div>
+						</div>
+						<div class="text-right mr-2">
+							<div
+								class="text-[10px] uppercase tracking-wider text-ink-500 font-medium"
+							>
+								{{ __("Cash & bank") }}
+							</div>
+							<div
+								class="text-lg font-semibold text-ink-900 tabular-nums leading-none"
+							>
+								{{ fmtINR(cashBank) }}
+							</div>
+						</div>
+						<div
+							class="text-brand-400 group-hover:text-brand-600 transition-colors text-xl"
+						>
+							→
+						</div>
+					</div>
+				</RouterLink>
+
+				<!-- Transactions -->
+				<div v-if="txTiles.length" class="mb-8">
+					<h2
+						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
+					>
+						{{ __("Transactions") }}
+					</h2>
+					<div class="border-t border-ink-200 mb-3"></div>
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+						<WorkspaceShortcut
+							v-for="t in txTiles"
+							:key="t.section"
+							:icon="t.icon"
+							:label="__(t.label)"
+							:to="`/project-finance/${t.section}`"
+						/>
+					</div>
+				</div>
+
+				<!-- Masters -->
+				<div v-if="masterTiles.length" class="mb-8">
+					<h2
+						class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2"
+					>
+						{{ __("Masters") }}
+					</h2>
+					<div class="border-t border-ink-200 mb-3"></div>
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+						<WorkspaceShortcut
+							v-for="t in masterTiles"
+							:key="t.section"
+							:icon="t.icon"
+							:label="__(t.label)"
+							:to="`/project-finance/${t.section}`"
+						/>
+					</div>
+				</div>
+
+				<!-- Records (admin-curated DocTypes) -->
+				<WorkspaceRecordsSection workspace="project-finance" />
+
+				<!-- Reports — per-report backend permission, not the ledger caps; shared section
+				     owns fetch + skeleton and renders only the tiles the backend returns -->
+				<WorkspaceReportsSection
+					workspace="project-finance"
+					:enabled="hasReports"
+					spacing="mb-4"
+				/>
+			</template>
+		</div>
+	</div>
+</template>

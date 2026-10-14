@@ -1,0 +1,212 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "STG-.YYYY.-.###",
+ "creation": "2026-06-11 18:33:19.588377",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "stage_name",
+  "project",
+  "company",
+  "workflow_state",
+  "column_break_1",
+  "planned_start",
+  "planned_end",
+  "section_break_metrics",
+  "planned_task_count",
+  "planned_completion_pct",
+  "task_count",
+  "mean_progress",
+  "completed_task_count",
+  "section_break_desc",
+  "description",
+  "reject_reason",
+  "section_break_deps",
+  "dependencies",
+  "section_break_tasks",
+  "stage_planning_tasks",
+  "section_break_delay",
+  "delay_reasons"
+ ],
+ "fields": [
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Workflow State",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stage_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Stage Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_start",
+   "fieldtype": "Date",
+   "label": "Planned Start"
+  },
+  {
+   "fieldname": "planned_end",
+   "fieldtype": "Date",
+   "label": "Planned End"
+  },
+  {
+   "fieldname": "section_break_metrics",
+   "fieldtype": "Section Break",
+   "label": "Metrics"
+  },
+  {
+   "default": "0",
+   "fieldname": "planned_task_count",
+   "fieldtype": "Int",
+   "label": "Planned Task Count"
+  },
+  {
+   "default": "0",
+   "fieldname": "planned_completion_pct",
+   "fieldtype": "Percent",
+   "label": "Planned Completion %"
+  },
+  {
+   "default": "0",
+   "fieldname": "task_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Task Count",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "mean_progress",
+   "fieldtype": "Percent",
+   "label": "Mean Progress",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "completed_task_count",
+   "fieldtype": "Int",
+   "label": "Completed Task Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_desc",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Description"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state=='Rejected'",
+   "fieldname": "reject_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_deps",
+   "fieldtype": "Section Break",
+   "label": "Dependencies"
+  },
+  {
+   "fieldname": "dependencies",
+   "fieldtype": "Table",
+   "label": "Dependencies",
+   "options": "Stage Planning Dependency"
+  },
+  {
+   "fieldname": "section_break_tasks",
+   "fieldtype": "Section Break",
+   "label": "Stage Tasks"
+  },
+  {
+   "fieldname": "stage_planning_tasks",
+   "fieldtype": "Table",
+   "label": "Stage Tasks",
+   "options": "Stage Planning Task"
+  },
+  {
+   "fieldname": "section_break_delay",
+   "fieldtype": "Section Break",
+   "label": "Delay Log"
+  },
+  {
+   "fieldname": "delay_reasons",
+   "fieldtype": "Table",
+   "label": "Delay Reasons",
+   "options": "Stage Delay Reason"
+  }
+ ],
+ "links": [],
+ "modified": "2026-06-11 18:45:49.717937",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Stage Planning",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

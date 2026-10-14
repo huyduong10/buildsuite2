@@ -1,0 +1,89 @@
+<script setup>
+import { computed } from "vue";
+import { __ } from "@/utils/translate";
+
+const props = defineProps({
+	status: { type: String, required: true },
+	size: { type: String, default: "sm" },
+});
+
+// The BOQ status is stored as "Superseded" on the backend, but the prototype
+// renamed it to "Replaced" (reads less like document-control jargon). Alias it
+// at render time so the label matches the prototype without a backend change.
+const STATUS_ALIASES = {
+	Superseded: "Replaced",
+};
+const displayStatus = computed(() => STATUS_ALIASES[props.status] || props.status);
+
+const classes = computed(() => {
+	const map = {
+		Active: "bg-success-50 text-success-700",
+		// Task status (custom task_status field): Yet To Start / In Progress / In Delay / Completed / Blocked
+		"Yet To Start": "bg-ink-100 text-ink-600",
+		"In Progress": "bg-info-50 text-info-700",
+		"In Delay": "bg-danger-50 text-danger-700",
+		Completed: "bg-brand-50 text-brand-700",
+		Blocked: "bg-warning-50 text-warning-700",
+		"On Hold": "bg-warning-50 text-warning-700",
+		Planned: "bg-ink-100 text-ink-600",
+		New: "bg-ink-100 text-ink-600",
+		Ongoing: "bg-success-50 text-success-700",
+		Delayed: "bg-danger-50 text-danger-700",
+		Open: "bg-ink-100 text-ink-600",
+		Draft: "bg-ink-100 text-ink-600",
+		// Sales Invoice submission + payment statuses.
+		Submitted: "bg-info-50 text-info-700",
+		Unpaid: "bg-warning-50 text-warning-700",
+		"Partly Paid": "bg-warning-100 text-warning-700",
+		Paid: "bg-success-50 text-success-700",
+		Overdue: "bg-danger-50 text-danger-700",
+		"Pending Approval": "bg-warning-50 text-warning-700",
+		Approved: "bg-success-50 text-success-700",
+		Rejected: "bg-danger-50 text-danger-700",
+		// Petty Cash Request lifecycle.
+		Requested: "bg-warning-50 text-warning-700",
+		Disbursed: "bg-success-50 text-success-700",
+		// Subcontractor Work Order lifecycle + Subcontractor status.
+		Awarded: "bg-info-50 text-info-700",
+		Closed: "bg-ink-100 text-ink-500",
+		Inactive: "bg-ink-100 text-ink-500",
+		Cancelled: "bg-ink-100 text-ink-500",
+		// BOQ superseded revision — muted ink chip. Keyed on the stored value
+		// ("Superseded"); rendered as "Replaced" via STATUS_ALIASES above.
+		Superseded: "bg-ink-100 text-ink-500",
+		Replaced: "bg-ink-100 text-ink-500",
+		High: "bg-danger-50 text-danger-700",
+		Medium: "bg-warning-50 text-warning-700",
+		Low: "bg-info-50 text-info-700",
+		// Task Type values per proposal §M2 (Session 31). Slightly bolder fill (100
+		// not 50) to differentiate from status/priority pills in the same row.
+		// Where a tender line came from. Manual stays neutral; a line pulled from the
+		// library is tinted, because a copied rate is worth spotting in the column.
+		Manual: "bg-ink-100 text-ink-600",
+		Assembly: "bg-warning-50 text-warning-700",
+		BOQ: "bg-info-50 text-info-700",
+		Activity: "bg-ink-100 text-ink-700",
+		Milestone: "bg-warning-100 text-warning-700",
+		Inspection: "bg-info-100 text-info-700",
+		// Attendance — Field Attendance rows and the Labour Register. Without
+		// these an Absent worker and a Present one render as the same grey pill,
+		// which is the whole signal that column carries.
+		Present: "bg-success-50 text-success-700",
+		"Full Day": "bg-success-50 text-success-700",
+		"Half Day": "bg-warning-50 text-warning-700",
+		Absent: "bg-danger-50 text-danger-700",
+		"Overtime Only": "bg-info-50 text-info-700",
+	};
+	// Session 37 — pill shape (rounded-full + bumped horizontal padding) matching
+	// the Frappe Cloud reference. Used on both Desk and Vue pages; both look
+	// consistent with the new visual standard.
+	const base = props.size === "xs" ? "text-[10px] px-2 py-0.5" : "text-xs px-2 py-0.5";
+	return `${base} rounded-full font-medium inline-flex items-center ${
+		map[props.status] || "bg-ink-100 text-ink-600"
+	}`;
+});
+</script>
+
+<template>
+	<span :class="classes">{{ __(displayStatus) }}</span>
+</template>

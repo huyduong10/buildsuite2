@@ -1,0 +1,635 @@
+<script setup>
+// Subcontractor Bill — create + edit (core). Two modes:
+//   • From Work Order — this period's lines are derived from certified
+//     Measurement Books (read-only qty), retention inherited from the WO.
+//   • Direct — free-text charge lines for one-off / lump-sum work.
+// Taxes, TDS, discount and retention overrides are edited on the detail page
+// (Draft-editable). Pre-fills the WO from ?work_order=… on the URL.
+
+import { computed, ref, watch, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
+import { getBill, getWoBillContext, saveBill } from "@/data/subcontractApi";
+import { useAutosave } from "@/composables/useAutosave";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskForm from "@/components/desk/DeskForm.vue";
+import DeskActionBar from "@/components/desk/DeskActionBar.vue";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import CostCodePicker from "@/components/CostCodePicker.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { fmtINR } from "@/utils/format";
+
+const route = useRoute();
+const router = useRouter();
+// Scope the Work Order / Project pickers to the active company; re-queries on switch.
+const companyFilter = activeCompanyFilter();
+
+const editingId = computed(() => route.params.id || null);
+const isEdit = computed(() => !!editingId.value);
+
+function todayIso() {
+	return new Date().toISOString().slice(0, 10);
+}
+
+// A direct-bill line's cost code is a CostCodePicker object {type, group_code, item_code,
+// label}. Flatten it to the four stored fields on save (the BOQ actuals log joins on
+// cost_code_group / cost_code_item, not the label), and rebuild the object on edit-load.
+function costCodeForSave(cc) {
+	if (cc && typeof cc === "object") {
+		return {
+			cost_code_type: cc.type === "item" ? "Item" : "Group",
+			cost_code_group: cc.group_code || "",
+			cost_code_item: cc.item_code || "",
+			cost_code_label: cc.label || "",
+		};
+	}
+	return {
+		cost_code_type: "",
+		cost_code_group: "",
+		cost_code_item: "",
+		cost_code_label: cc || "",
+	};
+}
+function costCodeFromLine(l) {
+	if (!l.cost_code_type && !l.cost_code_group && !l.cost_code_item) {
+		return l.cost_code_label || null; // legacy line saved with only a label
+	}
+	return {
+		type: (l.cost_code_type || "").toLowerCase(),
+		group_code: l.cost_code_group || "",
+		item_code: l.cost_code_item || null,
+		label: l.cost_code_label || "",
+	};
+}
+
+const mode = ref("wo"); // 'wo' | 'direct'
+const saving = ref(false);
+const errors = ref({});
+// Auto-save only engages once an existing draft has finished loading into the form.
+const ready = ref(false);
+
+const form = ref({
+	work_order: route.query.work_order || "",
+	subcontractor: "",
+	project: "",
+	date: todayIso(),
+	supplier_invoice_no: "",
+	supplier_invoice_date: "",
+	retention_percent: 5,
+	lines: [{ scope: "", cost_code: null, amount: 0 }],
+});
+
+const woContext = ref(null); // { subcontractor_name, project_name, retention_percent, next_ra_no, lines[] }
+
+async function loadWoContext(wo) {
+	if (!wo) {
+		woContext.value = null;
+		return;
+	}
+	try {
+		const ctx = await getWoBillContext(wo);
+		woContext.value = ctx;
+		form.value.retention_percent = ctx.retention_percent ?? 5;
+	} catch (err) {
+		woContext.value = null;
+		showToast(err.message || __("Failed to load work order"), "error");
+	}
+}
+
+watch(
+	editingId,
+	async (id) => {
+		if (id) {
+			try {
+				const bill = await getBill(id);
+				if (bill.docstatus !== 0) {
+					router.replace(`/subcontractor-bills/${id}`);
+					return;
+				}
+				mode.value = bill.is_direct ? "direct" : "wo";
+				form.value = {
+					work_order: bill.work_order || "",
+					subcontractor: bill.subcontractor || "",
+					project: bill.project || "",
+					date: bill.date || todayIso(),
+					supplier_invoice_no: bill.supplier_invoice_no || "",
+					supplier_invoice_date: bill.supplier_invoice_date || "",
+					retention_percent: bill.retention_percent ?? 0,
+					lines: bill.is_direct
+						? (bill.lines || []).map((l) => ({
+								scope: l.scope || "",
+								cost_code: costCodeFromLine(l),
+								amount: l.this_period_amount || 0,
+						  }))
+						: [{ scope: "", cost_code: null, amount: 0 }],
+				};
+				if (!bill.is_direct) loadWoContext(bill.work_order);
+				// Arm auto-save after the watcher has flushed the load-population.
+				await nextTick();
+				ready.value = true;
+			} catch (err) {
+				showToast(err.message || __("Failed to load bill"), "error");
+			}
+		} else if (form.value.work_order) {
+			loadWoContext(form.value.work_order);
+		}
+	},
+	{ immediate: true }
+);
+
+function onWorkOrderChange(wo) {
+	form.value.work_order = wo;
+	loadWoContext(wo);
+}
+
+const woLines = computed(() => woContext.value?.lines || []);
+const woGross = computed(() =>
+	woLines.value.reduce((a, l) => a + (Number(l.this_period_amount) || 0), 0)
+);
+const directGross = computed(() =>
+	form.value.lines.reduce((a, l) => a + (Number(l.amount) || 0), 0)
+);
+const gross = computed(() => (mode.value === "wo" ? woGross.value : directGross.value));
+const retention = computed(
+	() => +((gross.value * (Number(form.value.retention_percent) || 0)) / 100).toFixed(2)
+);
+const netPayable = computed(() => +(gross.value - retention.value).toFixed(2));
+
+function addLine() {
+	form.value.lines.push({ scope: "", cost_code: null, amount: 0 });
+}
+function removeLine(i) {
+	form.value.lines.splice(i, 1);
+}
+
+function validate() {
+	const e = {};
+	if (mode.value === "wo") {
+		if (!form.value.work_order) e.work_order = __("Pick a work order.");
+		if (!isEdit.value && woGross.value <= 0)
+			e.lines = __(
+				"No fresh measured quantity to bill — certify a Measurement Book first."
+			);
+	} else {
+		if (!form.value.subcontractor) e.subcontractor = __("Pick a subcontractor.");
+		if (!form.value.project) e.project = __("Pick a project.");
+		if (directGross.value <= 0) e.lines = __("Add at least one line with an amount.");
+	}
+	errors.value = e;
+	return Object.keys(e).length === 0;
+}
+
+// Payload shared by the explicit Save and the quiet auto-save.
+function buildPayload() {
+	return mode.value === "wo"
+		? {
+				name: editingId.value || undefined,
+				is_direct: 0,
+				work_order: form.value.work_order,
+				date: form.value.date,
+				supplier_invoice_no: form.value.supplier_invoice_no,
+				supplier_invoice_date: form.value.supplier_invoice_date || undefined,
+				retention_percent: form.value.retention_percent,
+		  }
+		: {
+				name: editingId.value || undefined,
+				is_direct: 1,
+				subcontractor: form.value.subcontractor,
+				project: form.value.project,
+				date: form.value.date,
+				supplier_invoice_no: form.value.supplier_invoice_no,
+				supplier_invoice_date: form.value.supplier_invoice_date || undefined,
+				retention_percent: form.value.retention_percent,
+				lines: form.value.lines
+					.filter((l) => (l.scope || "").trim() || Number(l.amount) > 0)
+					.map((l) => ({
+						scope: l.scope,
+						...costCodeForSave(l.cost_code),
+						amount: Number(l.amount) || 0,
+					})),
+		  };
+}
+
+// Silent validity gate for auto-save — mirrors validate() WITHOUT mutating the `errors` UI (so
+// typing never flashes errors). In edit mode the wo-mode "no fresh qty" check doesn't apply.
+function isSaveable() {
+	if (mode.value === "wo") return !!form.value.work_order;
+	return !!form.value.subcontractor && !!form.value.project && directGross.value > 0;
+}
+
+async function onSave() {
+	if (!validate()) return;
+	saving.value = true;
+	try {
+		const bill = await saveBill(buildPayload());
+		router.push(`/subcontractor-bills/${bill.name}`);
+	} catch (err) {
+		showToast(err.message || __("Failed to save bill"), "error");
+	} finally {
+		saving.value = false;
+	}
+}
+
+// Quiet background update of the existing draft. The subcontractor-bill form has no frontend
+// permission gate on its Save button (backend-enforced), so auto-save adds none either — it
+// stays gated on draft-exists / loaded / valid, matching the button exactly.
+async function quietSave() {
+	await saveBill(buildPayload());
+}
+const { status: autosaveStatus } = useAutosave(form, quietSave, {
+	canAutosave: () => ready.value && isEdit.value && isSaveable(),
+});
+function onCancel() {
+	router.back();
+}
+
+const pageTitle = computed(() =>
+	isEdit.value ? __("Edit {0}", [editingId.value]) : __("New Subcontractor Bill")
+);
+const saveLabel = computed(() =>
+	saving.value
+		? __("Saving…")
+		: isEdit.value
+		? __("Save changes")
+		: __("Create Subcontractor bill")
+);
+const breadcrumbs = computed(() => [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Subcontractor Bills"), to: "/subcontractor-bills" },
+	...(isEdit.value
+		? [
+				{ label: editingId.value, to: `/subcontractor-bills/${editingId.value}` },
+				{ label: __("Edit") },
+		  ]
+		: [{ label: __("New") }]),
+]);
+</script>
+
+<template>
+	<DeskPage :title="pageTitle" :breadcrumbs="breadcrumbs">
+		<DeskForm>
+			<template #action-bar>
+				<DeskActionBar
+					:save-label="saveLabel"
+					:saving="saving"
+					@save="onSave"
+					@cancel="onCancel"
+				>
+					<template #left>
+						<span
+							v-if="isEdit && autosaveStatus !== 'idle'"
+							class="text-xs text-ink-400"
+						>
+							{{ autosaveStatus === "saving" ? __("Saving…") : __("Saved") }}
+						</span>
+					</template>
+				</DeskActionBar>
+			</template>
+
+			<!-- Mode toggle (create only) -->
+			<div v-if="!isEdit" class="flex gap-2 mb-4">
+				<button
+					type="button"
+					class="px-3 py-1.5 text-xs rounded-md border"
+					:class="
+						mode === 'wo'
+							? 'bg-brand-600 text-white border-brand-600'
+							: 'border-ink-200 text-ink-700'
+					"
+					@click="mode = 'wo'"
+				>
+					{{ __("From Work Order") }}
+				</button>
+				<button
+					type="button"
+					class="px-3 py-1.5 text-xs rounded-md border"
+					:class="
+						mode === 'direct'
+							? 'bg-brand-600 text-white border-brand-600'
+							: 'border-ink-200 text-ink-700'
+					"
+					@click="mode = 'direct'"
+				>
+					{{ __("Direct (no work order)") }}
+				</button>
+			</div>
+
+			<!-- WORK ORDER MODE -->
+			<template v-if="mode === 'wo'">
+				<DeskSection :title="__('Header')" :cols="3">
+					<DeskField :label="__('Work order')" required :error="errors.work_order">
+						<DeskLinkPicker
+							:model-value="form.work_order"
+							doctype="Subcontractor Work Order"
+							label-field="name"
+							value-field="name"
+							:filters="companyFilter"
+							:placeholder="__('Pick a work order…')"
+							:disabled="isEdit"
+							@update:model-value="onWorkOrderChange"
+						/>
+					</DeskField>
+					<DeskField :label="__('Date')" required
+						><DeskInput v-model="form.date" type="date"
+					/></DeskField>
+					<DeskField :label="__('Subcontractor Invoice No')"
+						><DeskInput
+							v-model="form.supplier_invoice_no"
+							:placeholder="__('e.g. SI-2026-0042')"
+					/></DeskField>
+					<DeskField :label="__('Subcontractor Invoice Date')"
+						><DeskInput v-model="form.supplier_invoice_date" type="date"
+					/></DeskField>
+					<DeskField :label="__('Retention (%)')">
+						<DeskInput
+							v-model.number="form.retention_percent"
+							type="number"
+							min="0"
+							step="0.5"
+						/>
+					</DeskField>
+				</DeskSection>
+
+				<div
+					v-if="woContext"
+					class="mt-3 text-xs text-ink-600 bg-info-50 border border-info-100 rounded-md px-3 py-2"
+				>
+					{{ woContext.subcontractor_name }} · {{ woContext.project_name }} · This will
+					be
+					<span class="font-medium">Bill {{ woContext.next_ra_no }}</span>
+				</div>
+
+				<section class="mt-6">
+					<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700 mb-2">
+						{{ __("This period (derived from certified Measurement Books)") }}
+					</h3>
+					<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
+						<table class="w-full text-xs" style="min-width: 720px">
+							<thead
+								class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]"
+							>
+								<tr>
+									<th class="text-left px-3 py-2">{{ __("Scope") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Measured") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Prev. billed") }}</th>
+									<th class="text-right px-3 py-2">{{ __("This period") }}</th>
+									<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="(l, i) in woLines"
+									:key="i"
+									class="border-t border-ink-100"
+								>
+									<td class="px-3 py-2 text-ink-900">{{ l.scope }}</td>
+									<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+										{{ fmtINR(l.rate)
+										}}<span class="text-ink-400">/{{ l.uom }}</span>
+									</td>
+									<td class="px-3 py-2 text-right tabular-nums text-info-700">
+										{{
+											Number(l.measured_qty_to_date).toLocaleString("en-IN")
+										}}
+									</td>
+									<td class="px-3 py-2 text-right tabular-nums text-ink-500">
+										{{ Number(l.previous_qty).toLocaleString("en-IN") }}
+									</td>
+									<td
+										class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium"
+									>
+										{{ Number(l.this_period_qty).toLocaleString("en-IN") }}
+									</td>
+									<td class="px-3 py-2 text-right tabular-nums font-medium">
+										{{ fmtINR(l.this_period_amount) }}
+									</td>
+								</tr>
+								<tr v-if="!woLines.length">
+									<td
+										colspan="6"
+										class="px-3 py-4 text-center text-ink-400 italic"
+									>
+										{{ __("Pick a work order to derive this period's lines.") }}
+									</td>
+								</tr>
+							</tbody>
+							<tfoot v-if="woLines.length">
+								<tr class="bg-ink-50 border-t border-ink-200">
+									<td colspan="5" class="px-3 py-1.5 text-right text-ink-600">
+										{{ __("Gross this period") }}
+									</td>
+									<td class="px-3 py-1.5 text-right tabular-nums font-semibold">
+										{{ fmtINR(woGross) }}
+									</td>
+								</tr>
+								<tr class="bg-ink-50">
+									<td colspan="5" class="px-3 py-1 text-right text-warning-700">
+										{{ __("Less retention ({0}%)", [form.retention_percent]) }}
+									</td>
+									<td class="px-3 py-1 text-right tabular-nums text-warning-700">
+										−{{ fmtINR(retention) }}
+									</td>
+								</tr>
+								<tr class="bg-ink-50 border-t border-ink-200">
+									<td
+										colspan="5"
+										class="px-3 py-1.5 text-right font-semibold text-ink-900"
+									>
+										{{ __("Net payable") }}
+									</td>
+									<td
+										class="px-3 py-1.5 text-right tabular-nums font-bold text-brand-700"
+									>
+										{{ fmtINR(netPayable) }}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+					<p v-if="errors.lines" class="text-xs text-danger-700 mt-1">
+						{{ errors.lines }}
+					</p>
+				</section>
+			</template>
+
+			<!-- DIRECT MODE -->
+			<template v-else>
+				<DeskSection :title="__('Header')" :cols="3">
+					<DeskField
+						:label="__('Subcontractor')"
+						required
+						:error="errors.subcontractor"
+					>
+						<DeskLinkPicker
+							v-model="form.subcontractor"
+							doctype="Supplier"
+							label-field="supplier_name"
+							value-field="name"
+							:filters="[['supplier_type', '=', 'Subcontractor']]"
+							:placeholder="__('Pick a subcontractor…')"
+						/>
+					</DeskField>
+					<DeskField
+						:label="__('Project')"
+						required
+						:hint="__('Sets the accounting company.')"
+						:error="errors.project"
+					>
+						<DeskLinkPicker
+							v-model="form.project"
+							doctype="Project"
+							label-field="project_name"
+							value-field="name"
+							:filters="companyFilter"
+							:placeholder="__('Pick a project…')"
+						/>
+					</DeskField>
+					<DeskField :label="__('Date')" required
+						><DeskInput v-model="form.date" type="date"
+					/></DeskField>
+					<DeskField :label="__('Subcontractor Invoice No')"
+						><DeskInput
+							v-model="form.supplier_invoice_no"
+							:placeholder="__('e.g. SI-2026-0042')"
+					/></DeskField>
+					<DeskField :label="__('Subcontractor Invoice Date')"
+						><DeskInput v-model="form.supplier_invoice_date" type="date"
+					/></DeskField>
+					<DeskField :label="__('Retention (%)')">
+						<DeskInput
+							v-model.number="form.retention_percent"
+							type="number"
+							min="0"
+							step="0.5"
+						/>
+					</DeskField>
+				</DeskSection>
+
+				<div
+					class="mt-3 text-xs text-ink-600 bg-info-50 border border-info-100 rounded-md px-3 py-2"
+				>
+					{{
+						__(
+							"Direct bill — for one-off / lump-sum charges. Taxes are applied on the detail page."
+						)
+					}}
+				</div>
+
+				<section class="mt-6">
+					<div class="flex items-center justify-between mb-2">
+						<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+							{{ __("Charge lines") }}
+						</h3>
+						<button
+							type="button"
+							class="text-xs text-brand-700 hover:underline"
+							@click="addLine"
+						>
+							{{ __("+ Add line") }}
+						</button>
+					</div>
+					<div class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
+						<table class="w-full text-xs" style="min-width: 560px">
+							<thead
+								class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]"
+							>
+								<tr>
+									<th class="text-left px-3 py-2 min-w-[220px]">
+										{{ __("Scope / description") }}
+									</th>
+									<th class="text-left px-3 py-2 min-w-[150px]">
+										{{ __("Cost code (optional)") }}
+									</th>
+									<th class="text-right px-3 py-2 w-32">{{ __("Amount") }}</th>
+									<th class="w-8"></th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="(l, i) in form.lines"
+									:key="i"
+									class="border-t border-ink-100"
+								>
+									<td class="px-3 py-1">
+										<input
+											v-model="l.scope"
+											class="w-full bg-transparent text-xs py-1.5 focus:outline-none"
+											:placeholder="__('What is being billed')"
+										/>
+									</td>
+									<td class="px-3 py-1">
+										<CostCodePicker
+											v-model="l.cost_code"
+											:project-id="form.project"
+											:placeholder="__('Pick code…')"
+										/>
+									</td>
+									<td class="px-3 py-1">
+										<input
+											v-model.number="l.amount"
+											type="number"
+											min="0"
+											class="w-full bg-transparent text-xs text-right tabular-nums py-1.5 focus:outline-none"
+										/>
+									</td>
+									<td class="px-2 py-1 text-center">
+										<button
+											type="button"
+											class="text-ink-400 hover:text-danger-600"
+											@click="removeLine(i)"
+										>
+											✕
+										</button>
+									</td>
+								</tr>
+							</tbody>
+							<tfoot>
+								<tr class="bg-ink-50 border-t border-ink-200">
+									<td colspan="2" class="px-3 py-1.5 text-right text-ink-600">
+										{{ __("Gross") }}
+									</td>
+									<td class="px-3 py-1.5 text-right tabular-nums font-semibold">
+										{{ fmtINR(directGross) }}
+									</td>
+									<td></td>
+								</tr>
+								<tr class="bg-ink-50">
+									<td colspan="2" class="px-3 py-1 text-right text-warning-700">
+										{{ __("Less retention ({0}%)", [form.retention_percent]) }}
+									</td>
+									<td class="px-3 py-1 text-right tabular-nums text-warning-700">
+										−{{ fmtINR(retention) }}
+									</td>
+									<td></td>
+								</tr>
+								<tr class="bg-ink-50 border-t border-ink-200">
+									<td
+										colspan="2"
+										class="px-3 py-1.5 text-right font-semibold text-ink-900"
+									>
+										{{ __("Net payable") }}
+									</td>
+									<td
+										class="px-3 py-1.5 text-right tabular-nums font-bold text-brand-700"
+									>
+										{{ fmtINR(netPayable) }}
+									</td>
+									<td></td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+					<p v-if="errors.lines" class="text-xs text-danger-700 mt-1">
+						{{ errors.lines }}
+					</p>
+				</section>
+			</template>
+		</DeskForm>
+	</DeskPage>
+</template>

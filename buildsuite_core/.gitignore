@@ -1,0 +1,71 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.py~
+
+# Distribution / packaging
+.Python
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+tags
+MANIFEST
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# IDEs and editors
+.vscode/
+.vs/
+.idea/
+.kdev4/
+*.kdev4
+*.DS_Store
+*.swp
+*.comp.js
+.wnf-lang-status
+*debug.log
+
+# Helix Editor
+.helix/
+
+# Aider AI Chat
+.aider*
+
+# BuildSuite
+
+# Local working/continuity docs — not tracked on shared branches.
+context/
+
+# Generated frontend build output (from frontend/vite build)
+buildsuite_core/public/frontend/**
+!buildsuite_core/public/frontend/.gitkeep
+buildsuite_core.code-workspace
+frontend/auto-imports.d.ts
+frontend/components.d.ts
+
+# Locally-cloned semgrep rules (make semgrep)
+.frappe-semgrep-rules/
+buildsuite_core/public/node_modules

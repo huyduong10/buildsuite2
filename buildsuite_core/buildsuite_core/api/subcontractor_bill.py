@@ -1,0 +1,597 @@
+# Copyright (c) 2026, Infraholic Innovations Pvt. Ltd and contributors
+# For license information, please see license.txt
+
+"""Whitelisted endpoints for the Subcontractor Bill — the Vue front-end of the bill DocType.
+
+Two modes: a Work Order bill (lines derived from certified Measurement Books) and a Direct
+bill (free-text charge lines). Submit generates a linked Purchase Invoice; payment is a real
+ERPNext Payment Entry against that PI. Taxes are country-agnostic (any Purchase Taxes and
+Charges Template)."""
+
+import frappe
+from frappe import _
+from frappe.utils import flt
+
+BILL = "Subcontractor Bill"
+WORK_ORDER = "Subcontractor Work Order"
+
+
+# --------------------------------------------------------------------------- #
+# Serialisation
+# --------------------------------------------------------------------------- #
+def _effective_company(doc):
+	"""The company the bill's accounting is anchored to — the project's company when there is
+	a project (re-derived so a Draft saved before the anchoring fix still serves the right
+	one for the Vue tax/account pickers), else the stored/default company."""
+	if doc.project:
+		return frappe.db.get_value("Project", doc.project, "company") or doc.company
+	return doc.company
+
+
+def _linked_advances_for_bill(doc):
+	"""Advances adjusted against this bill — read through its generated Purchase Invoice, reusing
+	the supplier-bill logic (the subcontractor is the PI's supplier)."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	if not doc.purchase_invoice or not frappe.db.exists("Purchase Invoice", doc.purchase_invoice):
+		return []
+	pi = frappe.get_doc("Purchase Invoice", doc.purchase_invoice)
+	return _sb._linked_advances(pi)
+
+
+def _serialize(doc):
+	advances = _linked_advances_for_bill(doc)
+	adjusted = sum(a["allocated"] for a in advances)
+	pay = _payment_summary(doc)
+	# Advance adjustment settles the payable but is not a cash payment — split it out of "Paid".
+	pay["advance_adjusted"] = adjusted
+	if doc.docstatus == 1:
+		pay["paid"] = max(flt(pay["paid"]) - adjusted, 0)
+	return {
+		"name": doc.name,
+		"is_direct": doc.is_direct,
+		"advance_adjusted": adjusted,
+		"advances": advances,
+		"work_order": doc.work_order,
+		"ra_no": doc.ra_no,
+		"subcontractor": doc.subcontractor,
+		"subcontractor_name": doc.subcontractor_name,
+		"project": doc.project,
+		"project_name": frappe.db.get_value("Project", doc.project, "project_name") if doc.project else None,
+		"company": _effective_company(doc),
+		"date": str(doc.date) if doc.date else None,
+		"supplier_invoice_no": doc.supplier_invoice_no,
+		"supplier_invoice_date": str(doc.supplier_invoice_date) if doc.supplier_invoice_date else None,
+		"bill_type": doc.bill_type,
+		"retention_percent": doc.retention_percent,
+		"status": doc.status,
+		"docstatus": doc.docstatus,
+		"taxes_and_charges": doc.taxes_and_charges,
+		"tax_category": doc.tax_category,
+		"apply_tds": doc.apply_tds,
+		"tax_withholding_category": doc.tax_withholding_category,
+		"tds_rate": doc.tds_rate,
+		"additional_discount_on": doc.additional_discount_on,
+		"additional_discount_percentage": doc.additional_discount_percentage,
+		"discount_amount": doc.discount_amount,
+		"advance_recovery": doc.advance_recovery,
+		"expense_account": doc.expense_account,
+		# Totals waterfall
+		"gross": doc.gross,
+		"taxable_value": doc.taxable_value,
+		"total_taxes": doc.total_taxes,
+		"grand_total": doc.grand_total,
+		"tds_amount": doc.tds_amount,
+		"retention_amount": doc.retention_amount,
+		"invoice_value": doc.invoice_value,
+		"net_payable": doc.net_payable,
+		"purchase_invoice": doc.purchase_invoice,
+		"amended_from": doc.amended_from,
+		"lines": [
+			{
+				"name": r.name,
+				"work_order_line": r.work_order_line,
+				"scope": r.scope,
+				"cost_code_type": r.cost_code_type,
+				"cost_code_group": r.cost_code_group,
+				"cost_code_item": r.cost_code_item,
+				"cost_code_label": r.cost_code_label,
+				"uom": r.uom,
+				"rate": r.rate,
+				"measured_qty_to_date": r.measured_qty_to_date,
+				"previous_qty": r.previous_qty,
+				"this_period_qty": r.this_period_qty,
+				"this_period_amount": r.this_period_amount,
+			}
+			for r in doc.lines
+		],
+		"taxes": [
+			{
+				"name": t.name,
+				"charge_type": t.charge_type,
+				"account_head": t.account_head,
+				"description": t.description,
+				"rate": t.rate,
+				"tax_amount": t.tax_amount,
+			}
+			for t in doc.taxes
+		],
+		"payment": pay,
+		"actions": _available_actions(doc),
+	}
+
+
+def _available_actions(doc):
+	if doc.docstatus == 0:
+		return ["edit", "submit", "delete"]
+	if doc.docstatus == 1:
+		acts = []
+		if _payment_summary(doc)["outstanding"] > 0.01:
+			acts.append("pay")
+		acts.append("cancel")
+		return acts
+	return ["amend", "delete"]  # cancelled
+
+
+def _payment_summary(doc):
+	"""Read payment state THROUGH the generated PI (the bill stores none of its own)."""
+	if not doc.purchase_invoice or not frappe.db.exists("Purchase Invoice", doc.purchase_invoice):
+		return {"invoiced": 0, "paid": 0, "outstanding": 0, "status": "Unpaid"}
+	pi = frappe.db.get_value(
+		"Purchase Invoice",
+		doc.purchase_invoice,
+		["grand_total", "outstanding_amount", "status"],
+		as_dict=True,
+	)
+	invoiced = flt(pi.grand_total)
+	outstanding = flt(pi.outstanding_amount)
+	paid = invoiced - outstanding
+	if outstanding <= 0.01 and invoiced > 0:
+		status = "Paid"
+	elif paid > 0.01:
+		status = "Partly Paid"
+	else:
+		status = "Unpaid"
+	return {"invoiced": invoiced, "paid": paid, "outstanding": outstanding, "status": status}
+
+
+# --------------------------------------------------------------------------- #
+# Reads
+# --------------------------------------------------------------------------- #
+@frappe.whitelist()
+def get_bill(name: str):
+	doc = frappe.get_doc(BILL, name)
+	doc.check_permission("read")
+	return _serialize(doc)
+
+
+@frappe.whitelist()
+def list_bills(project: str | None = None):
+	"""Subcontractor Bills for the list — the workflow state (from docstatus) plus the derived
+	payment status (Unpaid / Partly Paid / Paid) read through each bill's generated Purchase
+	Invoice, so the list can show both badges."""
+	from buildsuite_core.utils.project import company_scope
+
+	PI = "Purchase Invoice"
+	# Scope to the switcher's working company only when company awareness is enabled (else all).
+	filters = {}
+	scope = company_scope()
+	if scope:
+		filters["company"] = scope
+	if project:
+		filters["project"] = project
+	bills = frappe.get_all(
+		BILL,
+		filters=filters,
+		fields=[
+			"name",
+			"ra_no",
+			"is_direct",
+			"subcontractor_name",
+			"project",
+			"date",
+			"gross",
+			"retention_amount",
+			"net_payable",
+			"docstatus",
+			"purchase_invoice",
+		],
+		order_by="date desc, creation desc",
+	)
+	pi_names = [b.purchase_invoice for b in bills if b.purchase_invoice]
+	pis = {}
+	if pi_names:
+		for pi in frappe.get_all(
+			PI, filters={"name": ["in", pi_names]}, fields=["name", "grand_total", "outstanding_amount"]
+		):
+			pis[pi.name] = pi
+	out = []
+	for b in bills:
+		pay = None
+		if b.docstatus == 1 and b.purchase_invoice in pis:
+			pi = pis[b.purchase_invoice]
+			grand, outstanding = flt(pi.grand_total), flt(pi.outstanding_amount)
+			if outstanding <= 0.01 and grand > 0:
+				pay = "Paid"
+			elif grand - outstanding > 0.01:
+				pay = "Partly Paid"
+			else:
+				pay = "Unpaid"
+		out.append(
+			{
+				"name": b.name,
+				"ra_no": b.ra_no,
+				"is_direct": b.is_direct,
+				"subcontractor_name": b.subcontractor_name,
+				"project": b.project,
+				"date": str(b.date) if b.date else None,
+				"gross": flt(b.gross),
+				"retention_amount": flt(b.retention_amount),
+				"net_payable": flt(b.net_payable),
+				"status": {0: "Draft", 1: "Submitted", 2: "Cancelled"}.get(b.docstatus, "Draft"),
+				"payment_status": pay,
+			}
+		)
+	return out
+
+
+@frappe.whitelist()
+def get_wo_bill_context(work_order: str):
+	"""Everything the New (Work Order) bill screen needs: WO header, the derived this-period
+	lines (measured − previously billed), and the next RA number."""
+	from buildsuite_core.api.subcontract import _wo_state, get_wo_measurements
+	from buildsuite_core.buildsuite_core.doctype.subcontractor_bill.subcontractor_bill import (
+		previously_billed_by_line,
+	)
+
+	wo = frappe.get_doc(WORK_ORDER, work_order)
+	wo.check_permission("read")
+	measured = get_wo_measurements(work_order).get("measured_by_line", {})
+	previous = previously_billed_by_line(work_order)
+
+	lines = []
+	for row in wo.lines:
+		m = flt(measured.get(row.name, 0))
+		p = flt(previous.get(row.name, 0))
+		tpq = max(0.0, m - p)
+		lines.append(
+			{
+				"work_order_line": row.name,
+				"scope": row.scope,
+				"cost_code_label": row.cost_code_label,
+				"uom": row.uom,
+				"rate": row.rate,
+				"measured_qty_to_date": m,
+				"previous_qty": p,
+				"this_period_qty": tpq,
+				"this_period_amount": tpq * flt(row.rate),
+			}
+		)
+	existing = frappe.get_all(BILL, filters={"work_order": work_order, "docstatus": ["<", 2]}, pluck="ra_no")
+	return {
+		"work_order": wo.name,
+		"subcontractor": wo.subcontractor,
+		"subcontractor_name": wo.subcontractor_name,
+		"project": wo.project,
+		"project_name": frappe.db.get_value("Project", wo.project, "project_name"),
+		"company": wo.company,
+		"retention_percent": wo.retention_percent,
+		# Work Order state is derived from docstatus (Phase 2 dropped the stored `status` field);
+		# reading wo.status raised AttributeError on migrated sites that never had that field.
+		"status": _wo_state(wo),
+		"total_value": wo.total_value,
+		"next_ra_no": max([r for r in existing if r] or [0]) + 1,
+		"lines": lines,
+	}
+
+
+@frappe.whitelist()
+def list_tax_templates(company: str | None = None):
+	"""Purchase Taxes and Charges Templates for the picker — dynamic, whatever the site's
+	compliance app has seeded (GST, VAT, none). Not GST-specific."""
+	filters = {"disabled": 0}
+	if company:
+		filters["company"] = company
+	return frappe.get_all(
+		"Purchase Taxes and Charges Template", filters=filters, fields=["name", "title"], order_by="title asc"
+	)
+
+
+@frappe.whitelist()
+def get_tax_template_rows(template: str):
+	"""Resolve a template's tax rows into the bill's tax-table shape."""
+	doc = frappe.get_doc("Purchase Taxes and Charges Template", template)
+	return [
+		{
+			"charge_type": t.charge_type,
+			"account_head": t.account_head,
+			"description": t.description or t.account_head,
+			"rate": t.rate,
+		}
+		for t in doc.taxes
+	]
+
+
+@frappe.whitelist()
+def list_withholding_categories():
+	return frappe.get_all("Tax Withholding Category", fields=["name"], order_by="name asc")
+
+
+# --------------------------------------------------------------------------- #
+# Writes
+# --------------------------------------------------------------------------- #
+@frappe.whitelist()
+def save_bill(payload: str):
+	"""Create or update a DRAFT bill (both modes). WO-bill lines are re-derived server-side
+	from the Measurement Books (never trusted from the client); direct-bill lines are taken
+	from the payload."""
+	data = frappe.parse_json(payload)
+	name = data.get("name")
+
+	if name and frappe.db.exists(BILL, name):
+		doc = frappe.get_doc(BILL, name)
+		doc.check_permission("write")
+		if doc.docstatus != 0:
+			frappe.throw(_("Only a draft bill can be edited."))
+	else:
+		doc = frappe.new_doc(BILL)
+
+	doc.is_direct = 1 if data.get("is_direct") else 0
+	doc.date = data.get("date")
+	doc.supplier_invoice_no = (data.get("supplier_invoice_no") or "").strip() or None
+	doc.supplier_invoice_date = data.get("supplier_invoice_date") or None
+	doc.bill_type = data.get("bill_type") or "Normal"
+
+	if doc.is_direct:
+		doc.work_order = None
+		doc.subcontractor = data.get("subcontractor")
+		doc.project = data.get("project")
+		doc.retention_percent = flt(data.get("retention_percent"))
+		doc.set("lines", [])
+		for row in data.get("lines") or []:
+			amount = flt(
+				row.get("amount") if row.get("amount") is not None else row.get("this_period_amount")
+			)
+			if not (row.get("scope") or "").strip() and amount <= 0:
+				continue
+			doc.append(
+				"lines",
+				{
+					"scope": (row.get("scope") or "").strip(),
+					# Persist the full cost code (type + group + item), not just the label —
+					# the BOQ actuals log joins on cost_code_group / cost_code_item.
+					"cost_code_type": row.get("cost_code_type") or "",
+					"cost_code_group": row.get("cost_code_group") or "",
+					"cost_code_item": row.get("cost_code_item") or "",
+					"cost_code_label": row.get("cost_code_label") or row.get("cost_code") or "",
+					"this_period_amount": amount,
+				},
+			)
+	else:
+		doc.work_order = data.get("work_order")
+		if data.get("retention_percent") not in (None, ""):
+			doc.retention_percent = flt(data.get("retention_percent"))
+		doc.fetch_lines()  # re-derive lines from certified MBs
+
+	# Billing block.
+	doc.taxes_and_charges = data.get("taxes_and_charges")
+	doc.tax_category = data.get("tax_category")
+	doc.apply_tds = 1 if data.get("apply_tds") else 0
+	doc.tax_withholding_category = data.get("tax_withholding_category")
+	doc.additional_discount_on = data.get("additional_discount_on") or "Net Total"
+	doc.additional_discount_percentage = flt(data.get("additional_discount_percentage"))
+	doc.discount_amount = flt(data.get("discount_amount"))
+	doc.advance_recovery = flt(data.get("advance_recovery"))
+	if "expense_account" in data:
+		doc.expense_account = data.get("expense_account")
+
+	# Taxes: explicit rows if given, else expand the chosen template.
+	rows = data.get("taxes")
+	if rows is None and doc.taxes_and_charges:
+		rows = get_tax_template_rows(doc.taxes_and_charges)
+	doc.set("taxes", [])
+	for t in rows or []:
+		doc.append(
+			"taxes",
+			{
+				"charge_type": t.get("charge_type") or "On Net Total",
+				"account_head": t.get("account_head"),
+				"description": t.get("description"),
+				"rate": flt(t.get("rate")),
+			},
+		)
+
+	doc.flags.ignore_permissions = True
+	doc.save()
+	return _serialize(doc)
+
+
+def _guard_workflow():
+	"""When a site configures an active workflow for Subcontractor Bill, submission and
+	cancellation must flow through it (buildsuite_core.api.workflow.apply_action). The
+	workflow's submit transition still runs on_submit (Purchase Invoice generation); this
+	guard only stops the direct docstatus endpoints from bypassing the state machine."""
+	from buildsuite_core.api.workflow import workflow_active
+
+	if workflow_active(BILL):
+		frappe.throw(_("Subcontractor Bill is governed by a workflow — use a workflow action."))
+
+
+@frappe.whitelist()
+def submit_bill(name: str):
+	_guard_workflow()
+	doc = frappe.get_doc(BILL, name)
+	doc.check_permission("submit")
+	doc.submit()
+	return _serialize(doc)
+
+
+@frappe.whitelist()
+def cancel_bill(name: str):
+	_guard_workflow()
+	doc = frappe.get_doc(BILL, name)
+	doc.check_permission("cancel")
+	doc.cancel()
+	return _serialize(doc)
+
+
+@frappe.whitelist()
+def delete_bill(name: str):
+	doc = frappe.get_doc(BILL, name)
+	doc.check_permission("delete")
+	if doc.docstatus == 1:
+		frappe.throw(_("Cancel a submitted bill before deleting it."))
+	frappe.delete_doc(BILL, name)
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def amend_bill(name: str):
+	"""Amend a cancelled bill — a fresh editable Draft copy linked via amended_from; the original
+	stays Cancelled."""
+	src = frappe.get_doc(BILL, name)
+	src.check_permission("amend")
+	if src.docstatus != 2:
+		frappe.throw(_("Only a cancelled bill can be amended."))
+	amended = frappe.copy_doc(src)
+	amended.amended_from = name
+	amended.docstatus = 0
+	amended.purchase_invoice = None  # a fresh Purchase Invoice is generated on resubmit
+	amended.flags.ignore_permissions = True
+	amended.insert()
+	return _serialize(amended)
+
+
+# --------------------------------------------------------------------------- #
+# Payment (real ERPNext Payment Entry against the generated PI)
+# --------------------------------------------------------------------------- #
+@frappe.whitelist()
+def make_payment_entry(name: str):
+	"""Create a DRAFT Payment Entry against the bill's Purchase Invoice and return its name, so
+	the Vue 'Make Payment' button can open it in Desk (/app/payment-entry/<name>) pre-filled for
+	the user to review + submit."""
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("read")
+	if not bill.purchase_invoice:
+		frappe.throw(_("This bill has no Purchase Invoice yet — submit it first."))
+
+	pe = get_payment_entry("Purchase Invoice", bill.purchase_invoice)
+	pe.flags.ignore_permissions = True
+	pe.insert()  # draft — the user reviews + submits it in Desk
+	return {"payment_entry": pe.name}
+
+
+@frappe.whitelist()
+def record_payment(name: str, amount: str | float | None = None, date: str | None = None, mode_of_payment: str | None = None, paid_from: str | None = None, reference_no: str | None = None):
+	"""Create + submit a Payment Entry against the bill's Purchase Invoice (used by tests / API)."""
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("write")
+	if not bill.purchase_invoice:
+		frappe.throw(_("This bill has no Purchase Invoice yet — submit it first."))
+
+	pe = get_payment_entry("Purchase Invoice", bill.purchase_invoice)
+	if date:
+		pe.posting_date = date
+	if paid_from:
+		# The funding Bank/Cash account (defaults otherwise to the company's default).
+		if frappe.db.get_value("Account", paid_from, "company") != pe.company:
+			frappe.throw(_("Account {0} does not belong to company {1}.").format(paid_from, pe.company))
+		pe.paid_from = paid_from
+		pe.paid_from_account_currency = frappe.db.get_value("Account", paid_from, "account_currency")
+	if amount:
+		pe.paid_amount = flt(amount)
+		pe.received_amount = flt(amount)
+		if pe.references:
+			pe.references[0].allocated_amount = flt(amount)
+	if mode_of_payment:
+		pe.mode_of_payment = mode_of_payment
+	if reference_no:
+		pe.reference_no = reference_no
+		pe.reference_date = date or bill.date
+	pe.flags.ignore_permissions = True
+	pe.insert()
+	pe.submit()
+	return {"payment_entry": pe.name, "payment": _payment_summary(frappe.get_doc(BILL, name))}
+
+
+@frappe.whitelist()
+def list_pay_accounts(company: str | None = None):
+	"""Bank/Cash accounts a bill can be paid FROM — the active (default) company, excluding
+	the Petty Cash float. See the single-company seam."""
+	from buildsuite_core.utils.petty_cash import get_petty_cash_account
+	from buildsuite_core.utils.project import default_company
+
+	company = company or default_company()
+	petty = get_petty_cash_account(company)
+	accounts = frappe.get_all(
+		"Account",
+		filters={"company": company, "is_group": 0, "account_type": ["in", ["Bank", "Cash"]]},
+		fields=["name", "account_type"],
+		order_by="account_type, name",
+	)
+	return [a for a in accounts if a.name != petty]
+
+
+@frappe.whitelist()
+def list_payment_modes():
+	"""Configured Modes of Payment (for the payment modal's select)."""
+	return frappe.get_all("Mode of Payment", fields=["name"], order_by="name", pluck="name")
+
+
+@frappe.whitelist()
+def list_payments(name: str):
+	"""Cash payments allocated to this bill's PI — advances are excluded (they show under the
+	bill's Advance Payments instead), reusing the supplier-bill logic."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	pi = frappe.db.get_value(BILL, name, "purchase_invoice")
+	if not pi:
+		return []
+	return _sb.list_payments(pi)
+
+
+# --------------------------------------------------------------------------- #
+# Adjust a subcontractor advance against the bill — reconciled against the bill's generated
+# Purchase Invoice (the subcontractor is the PI's supplier). Available only after submit, when
+# the PI exists; delegates to the supplier-bill advance logic.
+# --------------------------------------------------------------------------- #
+@frappe.whitelist()
+def available_advances(name: str):
+	"""On-account advances paid to this subcontractor that can be adjusted against the bill."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("read")
+	if not bill.purchase_invoice or not frappe.db.exists("Purchase Invoice", bill.purchase_invoice):
+		return []
+	return _sb.available_advances(bill.purchase_invoice)
+
+
+@frappe.whitelist()
+def link_advance(name: str, payment_entry: str, amount: str | float):
+	"""Adjust `amount` of a subcontractor advance against this bill, reducing its outstanding."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("write")
+	if not bill.purchase_invoice:
+		frappe.throw(_("Submit the bill first — advances link to its Purchase Invoice."))
+	_sb.link_advance(bill.purchase_invoice, payment_entry, amount)
+	return {"payment": _serialize(frappe.get_doc(BILL, name))["payment"]}
+
+
+@frappe.whitelist()
+def unlink_advance(name: str, payment_entry: str):
+	"""Reverse an advance adjustment on this bill (native Unreconcile Payment)."""
+	from buildsuite_core.api import supplier_bill as _sb
+
+	bill = frappe.get_doc(BILL, name)
+	bill.check_permission("write")
+	if not bill.purchase_invoice:
+		frappe.throw(_("This bill has no Purchase Invoice."))
+	_sb.unlink_advance(bill.purchase_invoice, payment_entry)
+	return {"payment": _serialize(frappe.get_doc(BILL, name))["payment"]}

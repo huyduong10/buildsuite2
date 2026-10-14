@@ -1,0 +1,159 @@
+{
+ "actions": [],
+ "autoname": "SWO-.YYYY.-.#####",
+ "creation": "2026-07-31 22:32:39.935541",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "subcontractor",
+  "subcontractor_name",
+  "project",
+  "column_break_hdr",
+  "date",
+  "delivery_type",
+  "retention_percent",
+  "sov_section",
+  "lines",
+  "total_value",
+  "terms_section",
+  "terms_template",
+  "terms",
+  "company",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "subcontractor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Subcontractor",
+   "link_filters": "[[\"Supplier\",\"supplier_type\",\"=\",\"Subcontractor\"]]",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "subcontractor.supplier_name",
+   "fieldname": "subcontractor_name",
+   "fieldtype": "Data",
+   "label": "Subcontractor Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_hdr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_type",
+   "fieldtype": "Link",
+   "label": "Delivery Type",
+   "options": "Subcontract Delivery Type"
+  },
+  {
+   "default": "5",
+   "fieldname": "retention_percent",
+   "fieldtype": "Percent",
+   "label": "Retention %"
+  },
+  {
+   "fieldname": "sov_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule of Values"
+  },
+  {
+   "fieldname": "lines",
+   "fieldtype": "Table",
+   "label": "Lines",
+   "options": "Subcontractor Work Order Line"
+  },
+  {
+   "fieldname": "total_value",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Value",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "terms_section",
+   "fieldtype": "Section Break",
+   "label": "Terms & Conditions"
+  },
+  {
+   "fieldname": "terms_template",
+   "fieldtype": "Link",
+   "label": "Terms Template",
+   "options": "Terms and Conditions"
+  },
+  {
+   "fieldname": "terms",
+   "fieldtype": "Text Editor",
+   "label": "Terms"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Subcontractor Work Order",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-07-31 22:32:40.022080",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Subcontractor Work Order",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "subcontractor_name",
+ "track_changes": 1
+}

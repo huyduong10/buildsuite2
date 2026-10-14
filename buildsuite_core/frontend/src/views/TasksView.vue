@@ -1,0 +1,312 @@
+<script setup>
+// Tasks list — use the generic DocType list shell so sort controls stay
+// consistent with other meta-backed list screens.
+
+import { ref, computed } from "vue";
+import { useRouter, useRoute, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import { usePermissions } from "@/composables/usePermissions";
+import StatusBadge from "@/components/StatusBadge.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
+import { useUserNames } from "@/composables/useUserNames";
+import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const store = useDataStore();
+const router = useRouter();
+const adapter = createDataAdapter(store);
+const { canCreate } = usePermissions();
+const { userName } = useUserNames();
+
+const statusFilter = ref("");
+const priorityFilter = ref("");
+const projectFilter = ref("");
+const assigneeFilter = ref("");
+const taskTypeFilter = ref("");
+
+function resourceRows(resource) {
+	const raw = resource?.data;
+	if (Array.isArray(raw)) return raw;
+	if (Array.isArray(raw?.value)) return raw.value;
+	return [];
+}
+
+const projectsResource = adapter.list("Project", {
+	fields: ["name", "project_name"],
+	orderBy: "project_name asc",
+	pageLength: 100,
+	cache: "buildsuite-task-project-filters",
+});
+const projectRows = computed(() => resourceRows(projectsResource));
+const projectsMap = computed(() => {
+	const map = {};
+	projectRows.value.forEach((p) => {
+		map[p.name] = p.project_name || p.name;
+	});
+	return map;
+});
+
+const wpsResource = adapter.list("Work Package", {
+	fields: ["name", "work_package_name"],
+	pageLength: 200,
+	cache: "buildsuite-task-wp-map-v2",
+});
+const wpRows = computed(() => resourceRows(wpsResource));
+const wpsMap = computed(() => {
+	const map = {};
+	wpRows.value.forEach((wp) => {
+		map[wp.name] = wp.work_package_name || wp.name;
+	});
+	return map;
+});
+
+function projectName(id) {
+	return projectsMap.value[id] || id;
+}
+function wpName(id) {
+	return wpsMap.value[id] || id;
+}
+
+// Assignee is Frappe-native `_assign` (a JSON list of users); the UI is
+// single-assignee, so surface the first entry.
+function assignedUser(row) {
+	try {
+		const list = JSON.parse(row?._assign || "[]");
+		return Array.isArray(list) && list.length ? list[0] : "";
+	} catch {
+		return "";
+	}
+}
+
+// Honor ?status= deep links from the Home dashboard tiles. "open" = every non-closed task,
+// "overdue" = non-closed and past its end date — both become base filters; any real status just
+// seeds the status chip. Mirrors home.py's _OPEN_TASK closed set.
+const route = useRoute();
+const CLOSED_TASK_STATUSES = ["Completed", "Cancelled", "Template"];
+const queryStatus = route.query.status || "";
+if (queryStatus && queryStatus !== "open" && queryStatus !== "overdue") {
+	statusFilter.value = queryStatus;
+}
+const baseFilters = computed(() => {
+	if (queryStatus === "open") return [["task_status", "not in", CLOSED_TASK_STATUSES]];
+	if (queryStatus === "overdue") {
+		const today = new Date().toISOString().slice(0, 10);
+		return [
+			["task_status", "not in", CLOSED_TASK_STATUSES],
+			["exp_end_date", "<", today],
+		];
+	}
+	return [];
+});
+
+const filterValues = computed(() => ({
+	status: statusFilter.value,
+	priority: priorityFilter.value,
+	project: projectFilter.value,
+	assignee: assigneeFilter.value,
+	taskType: taskTypeFilter.value,
+}));
+
+const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("Task") }];
+
+function onRowClick(row) {
+	router.push(`/tasks/${row.name}`);
+}
+</script>
+
+<template>
+	<DeskPage :title="__('Task')" :breadcrumbs="breadcrumbs">
+		<template #actions>
+			<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-save-btn"
+				>{{ __("+ New") }}</RouterLink
+			>
+		</template>
+
+		<DocTypeListView
+			doctype="Task"
+			:base-filters="baseFilters"
+			:field-order="[
+				'subject',
+				'project',
+				'work_package',
+				'task_status',
+				'priority',
+				'type',
+				'_assign',
+				'exp_end_date',
+				'progress',
+				'modified',
+			]"
+			:columns="[
+				{ key: 'subject', label: __('Task') },
+				{ key: 'project', label: __('Project · WP'), fields: ['project', 'work_package'] },
+				{ key: 'task_status', label: __('Status'), preset: 'status' },
+				{ key: 'priority', label: __('Priority'), preset: 'status' },
+				{ key: 'type', label: __('Task Type'), preset: 'status' },
+				{ key: 'assignee', label: __('Assignee'), fields: ['_assign'] },
+				{ key: 'exp_end_date', label: __('Due') },
+				{ key: 'progress', label: __('Progress'), preset: 'progress' },
+			]"
+			:search-fields="['subject', 'name']"
+			:filter-values="filterValues"
+			:filter-field-map="{
+				status: 'task_status',
+				priority: 'priority',
+				project: 'project',
+				assignee: { field: '_assign', op: 'like', like: true },
+				taskType: 'type',
+			}"
+			cache-key="buildsuite-task-list-generic"
+			row-key="name"
+			:search-placeholder="__('Search tasks…')"
+			@row-click="onRowClick"
+		>
+			<template #filter-chips>
+				<!-- Status: select when empty, chip when set -->
+				<DeskSelect v-if="!statusFilter" v-model="statusFilter" class="!w-36">
+					<option value="">{{ __("Status: Any") }}</option>
+					<option value="Yet To Start">{{ __("Yet To Start") }}</option>
+					<option value="In Progress">{{ __("In Progress") }}</option>
+					<option value="In Delay">{{ __("In Delay") }}</option>
+					<option value="Completed">{{ __("Completed") }}</option>
+					<option value="Blocked">{{ __("Blocked") }}</option>
+				</DeskSelect>
+				<DeskFilterChip
+					v-else
+					:label="__('Status')"
+					:value="__(statusFilter)"
+					@remove="statusFilter = ''"
+				/>
+
+				<!-- Priority -->
+				<DeskSelect v-if="!priorityFilter" v-model="priorityFilter" class="!w-36">
+					<option value="">{{ __("Priority: Any") }}</option>
+					<option value="Low">{{ __("Low") }}</option>
+					<option value="Medium">{{ __("Medium") }}</option>
+					<option value="High">{{ __("High") }}</option>
+				</DeskSelect>
+				<DeskFilterChip
+					v-else
+					:label="__('Priority')"
+					:value="__(priorityFilter)"
+					@remove="priorityFilter = ''"
+				/>
+
+				<!-- Project -->
+				<DeskSelect v-if="!projectFilter" v-model="projectFilter" class="!w-48">
+					<option value="">{{ __("Project: Any") }}</option>
+					<option v-for="p in projectRows" :key="p.name" :value="p.name">
+						{{ p.project_name || p.name }}
+					</option>
+				</DeskSelect>
+				<DeskFilterChip
+					v-else
+					:label="__('Project')"
+					:value="projectName(projectFilter)"
+					@remove="projectFilter = ''"
+				/>
+
+				<!-- Assignee — picks a real User so it matches the backend `owner` field. -->
+				<DeskLinkPicker
+					v-if="!assigneeFilter"
+					v-model="assigneeFilter"
+					class="!w-44"
+					doctype="User"
+					label-field="full_name"
+					value-field="name"
+					:search-fields="['full_name', 'name', 'email']"
+					:filters="[['enabled', '=', 1]]"
+					order-by="full_name asc"
+					:page-length="20"
+					:placeholder="__('Assignee: Any')"
+				/>
+				<DeskFilterChip
+					v-else
+					:label="__('Assignee')"
+					:value="userName(assigneeFilter)"
+					@remove="assigneeFilter = ''"
+				/>
+
+				<!-- Task Type (proposal §M2 Select) -->
+				<DeskSelect v-if="!taskTypeFilter" v-model="taskTypeFilter" class="!w-40">
+					<option value="">{{ __("Task Type: Any") }}</option>
+					<option value="Activity">{{ __("Activity") }}</option>
+					<option value="Milestone">{{ __("Milestone") }}</option>
+					<option value="Inspection">{{ __("Inspection") }}</option>
+				</DeskSelect>
+				<DeskFilterChip
+					v-else
+					:label="__('Task Type')"
+					:value="__(taskTypeFilter)"
+					@remove="taskTypeFilter = ''"
+				/>
+			</template>
+
+			<template #cell-subject="{ row }">
+				<span class="text-ink-900 font-medium">{{
+					row.subject || row.name || __("Untitled task")
+				}}</span>
+			</template>
+			<template #cell-project="{ row }">
+				<div class="text-xs text-ink-500">
+					<div>{{ projectName(row.project || "") }}</div>
+					<div v-if="row.work_package" class="text-ink-400">
+						{{ wpName(row.work_package) }}
+					</div>
+				</div>
+			</template>
+			<template #cell-status="{ row }">
+				<StatusBadge :status="row.status || 'Open'" />
+			</template>
+			<template #cell-priority="{ row }">
+				<StatusBadge :status="row.priority || 'Medium'" size="xs" />
+			</template>
+			<template #cell-type="{ row }">
+				<StatusBadge :status="row.type || 'Activity'" size="xs" />
+			</template>
+			<template #cell-assignee="{ row }">
+				<UserAvatar
+					v-if="assignedUser(row)"
+					:user-id="assignedUser(row)"
+					:show-name="true"
+					size="xs"
+				/>
+				<span v-else class="text-[10px] text-ink-300">—</span>
+			</template>
+			<template #cell-exp_end_date="{ row }">
+				<span class="text-xs text-ink-500">{{ fmtDate(row.exp_end_date) }}</span>
+			</template>
+			<template #cell-progress="{ row }">
+				<div class="flex items-center justify-end gap-2">
+					<div class="w-14 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px">
+						<div
+							class="h-full"
+							:class="
+								Number(row.progress) === 100 ? 'bg-success-500' : 'bg-info-500'
+							"
+							:style="`width:${Number(row.progress) || 0}%`"
+						></div>
+					</div>
+					<span class="text-xs tabular-nums w-8 text-right"
+						>{{ Number(row.progress) || 0 }}%</span
+					>
+				</div>
+			</template>
+
+			<template #empty>
+				<div class="text-sm text-ink-500">
+					{{ __("No tasks match these filters") }} ·
+					<RouterLink v-if="canCreate('task')" to="/tasks/new" class="desk-link"
+						>{{ __("Create a task →") }}</RouterLink
+					>
+				</div>
+			</template>
+		</DocTypeListView>
+	</DeskPage>
+</template>

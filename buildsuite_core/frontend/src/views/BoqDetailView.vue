@@ -1,0 +1,2636 @@
+<script setup>
+import { usePageTitle } from "@/composables/usePageTitle";
+// BOQ Detail — backend-backed (data adapter + boqApi). The Desk template is kept
+// verbatim; only the data layer changed: the local store became adapter reads of
+// BOQ + its Group/Item/Sub-Item children (transformed back to the prototype's
+// camelCase shape), CRUD became adapter.create/update/remove, and the workflow /
+// revision / explode / clone / import / recalc actions call the whitelisted boqApi.
+
+import { computed, ref, watch } from "vue";
+import { useRouter, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
+import { showToast } from "@/utils/appToast";
+import { parseFrappeError } from "@/utils/frappeError";
+import * as boqApi from "@/utils/boqApi";
+import { getCommittedByCostCode } from "@/data/subcontractApi";
+import StatusBadge from "@/components/StatusBadge.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskForm from "@/components/desk/DeskForm.vue";
+import DeskActionBar from "@/components/desk/DeskActionBar.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskTextarea from "@/components/desk/DeskTextarea.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { fmtINR, fmtCompactINR, fmtDate, currencySymbol } from "@/utils/format";
+import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { __ } from "@/utils/translate";
+
+const props = defineProps({ id: { type: String, required: true } });
+const router = useRouter();
+const adapter = createDataAdapter(useDataStore());
+const confirmDialog = useConfirm();
+// Gate BOQ mutations by the persona's capability, not just docstatus. `canSubmit` is
+// aliased to canSubmitCap to avoid colliding with the local draft-status computed below.
+const {
+	canEdit,
+	canDelete,
+	canCreate,
+	canSubmit: canSubmitCap,
+} = usePermissions();
+
+// === Data load: BOQ header + the three child levels ===
+const boqResource = adapter.read("BOQ", props.id, { fields: ["*"] });
+function childList(doctype, orderBy) {
+	return adapter.list(doctype, {
+		filters: [["boq", "=", props.id]],
+		fields: ["*"],
+		pageLength: 0,
+		orderBy,
+	});
+}
+const groupsRes = childList("BOQ Group", "idx_order asc");
+const itemsRes = childList("BOQ Item", "code asc");
+const subsRes = childList("BOQ Sub Item", "creation asc");
+function reloadTree() {
+	boqResource?.reload?.();
+	groupsRes?.reload?.();
+	itemsRes?.reload?.();
+	subsRes?.reload?.();
+}
+const rowsOf = (res) => res?.data || [];
+
+const boqDoc = computed(() => boqResource?.doc || null);
+const boq = computed(() => {
+	const d = boqDoc.value;
+	if (!d) return null;
+	return {
+		id: d.name,
+		status: d.status,
+		revision: d.revision,
+		title: d.title,
+		projectId: d.project,
+		preparedBy: d.prepared_by,
+		preparedDate: d.prepared_date,
+		approvedBy: d.approved_by,
+		approvedDate: d.approved_date,
+		baseRevisionId: d.base_revision,
+		sourceScoId: d.source_sco,
+	};
+});
+
+usePageTitle(() => boq.value?.id);
+
+// Resolve just this BOQ's project (its name feeds the breadcrumb) with a single
+// document read — not a scan over a capped project list, which left the raw
+// project id (e.g. "PROJ-0260") in the breadcrumb. Mirrors TaskDetailView.
+const projectResource = ref(null);
+function loadProjectResource(projectId) {
+	if (!projectId) {
+		projectResource.value = null;
+		return;
+	}
+	projectResource.value = adapter.read("Project", projectId, {
+		fields: ["name", "project_name"],
+		transform(rows) {
+			return rows.map((row) => ({
+				id: row?.name || "",
+				name: row?.project_name || row?.name || "",
+			}));
+		},
+	});
+}
+watch(() => boq.value?.projectId, loadProjectResource, { immediate: true });
+const project = computed(() => firstResourceRow(projectResource.value));
+
+function firstResourceRow(resource) {
+	if (resource?.doc) return resource.doc;
+	const raw = resource?.data;
+	if (Array.isArray(raw)) return raw[0] || null;
+	if (Array.isArray(raw?.value)) return raw.value[0] || null;
+	if (raw && typeof raw === "object" && "value" in raw) return raw.value || null;
+	return raw || null;
+}
+
+// Sibling revisions (for baseBoq label) + base-revision items (for compare mode).
+const projectBoqsRes = useDocTypeList("BOQ", {
+	filters: [["project", "=", props.id ? undefined : ""]],
+	fields: ["name", "revision", "title"],
+	pageLength: 0,
+	auto: false,
+});
+watch(
+	() => boq.value?.projectId,
+	(pid) => {
+		if (pid) {
+			projectBoqsRes.filters = [["project", "=", pid]];
+			projectBoqsRes.reload?.();
+		}
+	},
+	{ immediate: true }
+);
+const baseBoq = computed(() => {
+	const bid = boq.value?.baseRevisionId;
+	if (!bid) return null;
+	const b = (projectBoqsRes.data || []).find((x) => x.name === bid);
+	return b ? { id: b.name, revision: b.revision } : { id: bid, revision: "?" };
+});
+const sourceSco = computed(() => (boq.value?.sourceScoId ? { id: boq.value.sourceScoId } : null));
+
+// Lazily load base-revision items when compare is on.
+const baseItems = ref([]);
+async function loadBaseItems() {
+	const bid = boq.value?.baseRevisionId;
+	if (!bid) {
+		baseItems.value = [];
+		return;
+	}
+	try {
+		const res = adapter.list("BOQ Item", {
+			filters: [["boq", "=", bid]],
+			fields: ["code", "planned_amount"],
+			pageLength: 0,
+			auto: false,
+		});
+		await res.reload?.();
+		baseItems.value = res.data || [];
+	} catch {
+		baseItems.value = [];
+	}
+}
+
+// === Tree shape (camelCase, matching the template) ===
+const groups = computed(() =>
+	rowsOf(groupsRes).map((g) => ({
+		id: g.name,
+		code: g.code,
+		name: g.group_name,
+		order: g.idx_order,
+	}))
+);
+const allItems = computed(() =>
+	rowsOf(itemsRes).map((i) => ({
+		id: i.name,
+		groupId: i.boq_group,
+		code: i.code,
+		description: i.description,
+		unit: i.unit,
+		plannedQty: i.planned_qty,
+		rate: i.rate,
+		plannedAmount: i.planned_amount,
+		actualQty: i.actual_qty,
+		actualAmount: i.actual_amount,
+		taskId: i.task,
+		workPackageId: i.work_package,
+		costHead: i.cost_head,
+		assemblyId: i.assembly,
+		drivingQty: i.driving_qty,
+	}))
+);
+const allSubs = computed(() =>
+	rowsOf(subsRes).map((s) => ({
+		id: s.name,
+		itemId: s.boq_item,
+		rateMasterId: s.rate_master,
+		description: s.description,
+		qtyPerUnit: s.qty_per_unit,
+		uom: s.uom,
+		rate: s.rate,
+		amount: s.amount,
+	}))
+);
+function boqItemsByGroup(groupId) {
+	return allItems.value.filter((i) => i.groupId === groupId);
+}
+function boqSubItemsByItem(itemId) {
+	return allSubs.value.filter((s) => s.itemId === itemId);
+}
+const boqItemsByBoq = computed(() => allItems.value);
+
+// Shared 10-column grid for the tree header + group / item / sub-item rows so every
+// level lines up. Without it the rows have no column template and collapse.
+const treeGridStyle =
+	"grid-template-columns: 28px 80px minmax(240px, 1fr) 80px 90px 100px 110px 120px 110px 110px 120px 80px 110px; min-width: 1360px;";
+
+const totals = computed(() => {
+	const planned = allItems.value.reduce((a, i) => a + (i.plannedAmount || 0), 0);
+	// Actual = the cost-code actuals log total (Material + Subcontract + Expense), the same
+	// figure the per-group rows and the drill-down reconcile against (R2).
+	const actual = actualsSummary.value.total || 0;
+	const variance = actual - planned;
+	return {
+		planned,
+		actual,
+		variance,
+		variancePct: planned ? (variance / planned) * 100 : 0,
+		itemCount: allItems.value.length,
+	};
+});
+
+const expandedGroups = ref({});
+const expandedItems = ref({});
+const compareMode = ref(false);
+watch(compareMode, (on) => {
+	if (on) loadBaseItems();
+});
+
+function toggleGroup(id) {
+	expandedGroups.value[id] = !expandedGroups.value[id];
+}
+function toggleItem(id) {
+	expandedItems.value[id] = !expandedItems.value[id];
+}
+function expandAll() {
+	groups.value.forEach((g) => (expandedGroups.value[g.id] = true));
+	allItems.value.forEach((i) => (expandedItems.value[i.id] = true));
+}
+function collapseAll() {
+	expandedGroups.value = {};
+	expandedItems.value = {};
+}
+
+// ===== Tree search (path-only filter + auto-expand) =====
+// Filters the Group → Item → Sub-item tree to only the rows on a matching path:
+// a match keeps itself + its ancestors and hides sibling/other content. Manual
+// expand state is preserved (not mutated) so clearing the term restores the tree.
+const search = ref("");
+const searchTerm = computed(() => search.value.trim().toLowerCase());
+const searching = computed(() => !!searchTerm.value);
+
+function matchGroup(g) {
+	const t = searchTerm.value;
+	return (g.code || "").toLowerCase().includes(t) || (g.name || "").toLowerCase().includes(t);
+}
+function matchItem(item) {
+	const t = searchTerm.value;
+	return (
+		(item.code || "").toLowerCase().includes(t) ||
+		(item.description || "").toLowerCase().includes(t) ||
+		(item.unit || "").toLowerCase().includes(t)
+	);
+}
+function matchSub(si) {
+	const t = searchTerm.value;
+	return (
+		(si.description || "").toLowerCase().includes(t) ||
+		(si.rateMasterId || "").toLowerCase().includes(t)
+	);
+}
+
+// One pass builds the visible + matched id sets. Rule: a row is visible if it
+// matches OR has a visible descendant. Null when no search term is active.
+const filterState = computed(() => {
+	if (!searching.value) return null;
+	const visGroups = new Set(),
+		visItems = new Set(),
+		visSubs = new Set();
+	const mGroups = new Set(),
+		mItems = new Set(),
+		mSubs = new Set();
+	for (const g of groups.value) {
+		let groupHasVisChild = false;
+		const gm = matchGroup(g);
+		if (gm) mGroups.add(g.id);
+		for (const item of boqItemsByGroup(g.id)) {
+			let itemHasVisChild = false;
+			const im = matchItem(item);
+			if (im) mItems.add(item.id);
+			for (const si of boqSubItemsByItem(item.id)) {
+				if (matchSub(si)) {
+					visSubs.add(si.id);
+					mSubs.add(si.id);
+					itemHasVisChild = true;
+				}
+			}
+			if (im || itemHasVisChild) {
+				visItems.add(item.id);
+				groupHasVisChild = true;
+			}
+		}
+		if (gm || groupHasVisChild) visGroups.add(g.id);
+	}
+	return {
+		visGroups,
+		visItems,
+		visSubs,
+		mGroups,
+		mItems,
+		mSubs,
+		matchCount: mGroups.size + mItems.size + mSubs.size,
+	};
+});
+
+// Effective expansion: derived (force-open the path) while searching, manual otherwise.
+function groupExpanded(g) {
+	return searching.value
+		? !!filterState.value?.visGroups.has(g.id)
+		: !!expandedGroups.value[g.id];
+}
+function itemExpanded(item) {
+	return searching.value
+		? !!filterState.value?.visItems.has(item.id)
+		: !!expandedItems.value[item.id];
+}
+
+// Filtered row lists for the template (full lists when not searching).
+const visibleGroupsList = computed(() =>
+	searching.value
+		? groups.value.filter((g) => filterState.value?.visGroups.has(g.id))
+		: groups.value
+);
+function visibleItemsFor(g) {
+	const items = boqItemsByGroup(g.id);
+	return searching.value ? items.filter((i) => filterState.value?.visItems.has(i.id)) : items;
+}
+function visibleSubsFor(item) {
+	const subs = boqSubItemsByItem(item.id);
+	return searching.value ? subs.filter((si) => filterState.value?.visSubs.has(si.id)) : subs;
+}
+
+function variancePill(pct) {
+	if (Math.abs(pct) < 0.5) return "text-ink-500";
+	return pct > 0 ? "text-danger-700" : "text-success-700";
+}
+function pctOf(part, whole) {
+	return whole ? (part / whole) * 100 : 0;
+}
+function groupTotals(groupId) {
+	const items = boqItemsByGroup(groupId);
+	const planned = items.reduce((a, i) => a + (i.plannedAmount || 0), 0);
+	const actual = items.reduce((a, i) => a + (i.actualAmount || 0), 0);
+	return { planned, actual, count: items.length };
+}
+
+// === Committed (open subcontractor work orders) + Work Package labels ===
+// Committed is a group-level column: the sum of open WO line amounts mapped to the
+// group's cost code. WP + Cost Head are per-item (already on the item).
+const committedMap = ref({}); // { cost_code_group: amount }
+watch(
+	() => boq.value?.projectId,
+	async (pid) => {
+		committedMap.value = {};
+		if (!pid) return;
+		try {
+			committedMap.value = (await getCommittedByCostCode(pid)) || {};
+		} catch {
+			committedMap.value = {};
+		}
+	},
+	{ immediate: true }
+);
+function groupCommitted(group) {
+	return committedMap.value[group.code] || 0;
+}
+
+// === Actual — the cost-code actuals log ===
+// Real spend reaches the BOQ through the cost code (Material Consumption + Subcontractor Bill +
+// Expense Entry), resolved by code against this project. The Actual column and the per-code
+// drill-down both read this one summary, so the row figure and the modal total always reconcile
+// (one calculation path — R2). Derived live from submitted docs, so a cancelled source drops
+// out for free (R3).
+const EMPTY_SUMMARY = { by_group: {}, by_item: {}, total: 0 };
+const actualsSummary = ref({ ...EMPTY_SUMMARY });
+watch(
+	() => boq.value?.projectId,
+	async (pid) => {
+		actualsSummary.value = { ...EMPTY_SUMMARY };
+		if (!pid) return;
+		try {
+			actualsSummary.value = (await boqApi.getActualsSummary(pid)) || { ...EMPTY_SUMMARY };
+		} catch {
+			actualsSummary.value = { ...EMPTY_SUMMARY };
+		}
+	},
+	{ immediate: true }
+);
+function groupActual(group) {
+	return actualsSummary.value.by_group[group.code]?.actual || 0;
+}
+function itemActual(item) {
+	return actualsSummary.value.by_item[item.code]?.actual || 0;
+}
+// Coverage: how much of a group's actual is tracked at item level vs coded to the group only —
+// so a partly coded group is never mistaken for a fully attributed one.
+function groupCoverage(group) {
+	const g = actualsSummary.value.by_group[group.code];
+	if (!g || !g.actual) return null;
+	return { actual: g.actual, itemCoded: g.item_coded, groupCoded: g.group_coded };
+}
+
+// ===== Actuals drill-down (R1) — click a group / item Actual to open the contributing
+// source documents. A group rolls up every line carrying its code (item-coded + group-coded);
+// an item shows only its own lines. Each entry links to the source document it was derived from.
+const actualsDrill = ref(null); // null | { title, subtitle, entries, total, loading }
+async function openActualsDrill({ groupCode = null, itemCode = null, title, subtitle }) {
+	const pid = boq.value?.projectId;
+	if (!pid || (!groupCode && !itemCode)) return;
+	actualsDrill.value = { title, subtitle, entries: [], total: 0, loading: true };
+	try {
+		const res = await boqApi.getActualsForCode(pid, groupCode, itemCode);
+		actualsDrill.value = {
+			title,
+			subtitle,
+			entries: res.entries || [],
+			total: res.total || 0,
+			loading: false,
+		};
+	} catch (err) {
+		showToast(err.message || __("Failed to load actuals"), "error");
+		actualsDrill.value = null;
+	}
+}
+function openGroupActuals(group) {
+	if (!groupActual(group)) return;
+	openActualsDrill({
+		groupCode: group.code,
+		title: `${group.code} · ${group.name || group.groupName || ""}`.trim(),
+		subtitle: __("Group actual — contributing documents"),
+	});
+}
+function openItemActuals(item) {
+	if (!itemActual(item)) return;
+	openActualsDrill({
+		itemCode: item.code,
+		title: `${item.code} · ${(item.description || "").slice(0, 60)}`,
+		subtitle: __("Item actual — contributing documents"),
+	});
+}
+function closeActualsDrill() {
+	actualsDrill.value = null;
+}
+// Navigate to the source document an entry was derived from. In-app where a screen exists,
+// else the Desk form in a new tab.
+function openActualSource(e) {
+	if (e.source_doctype === "Subcontractor Bill") {
+		router.push(`/subcontractor-bills/${e.source_name}`);
+	} else if (e.source_doctype === "Stock Entry") {
+		window.open(`/app/stock-entry/${encodeURIComponent(e.source_name)}`, "_blank", "noopener");
+	} else if (e.source_doctype === "Expense Entry") {
+		window.open(
+			`/app/expense-entry/${encodeURIComponent(e.source_name)}`,
+			"_blank",
+			"noopener"
+		);
+	} else if (e.source_doctype === "Journal Entry") {
+		window.open(
+			`/app/journal-entry/${encodeURIComponent(e.source_name)}`,
+			"_blank",
+			"noopener"
+		);
+	}
+}
+const COST_TYPE_TONE = {
+	Material: "bg-info-50 text-info-700",
+	Subcontract: "bg-brand-50 text-brand-700",
+	Overhead: "bg-warning-50 text-warning-700",
+	Labour: "bg-success-50 text-success-700",
+	Plant: "bg-ink-100 text-ink-700",
+};
+
+const wpRes = useDocTypeList("Work Package", {
+	fields: ["name", "code", "work_package_name"],
+	orderBy: "code asc",
+	pageLength: 0,
+	cache: "buildsuite-wp-code-map",
+});
+const wpMap = computed(() => {
+	const m = {};
+	(wpRes.data || []).forEach((w) => {
+		m[w.name] = { code: w.code || w.name, name: w.work_package_name || "" };
+	});
+	return m;
+});
+function wpCode(id) {
+	return id ? wpMap.value[id]?.code || id : "";
+}
+function wpName(id) {
+	return id ? wpMap.value[id]?.name || "" : "";
+}
+function baseAmount(code) {
+	if (!baseBoq.value) return null;
+	const base = baseItems.value.find((i) => i.code === code);
+	return base?.planned_amount ?? null;
+}
+
+// === Workflow / advanced actions (boqApi) ===
+async function recalculate() {
+	try {
+		await boqApi.recalculateActuals(boq.value.id);
+		reloadTree();
+		showToast(__("Actuals recalculated"));
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to recalculate"), "error");
+	}
+}
+async function submit() {
+	const ok = await confirmDialog({
+		title: __("Submit for approval"),
+		message: __("Submit BOQ {0} for approval?", [boq.value.id]),
+		confirmLabel: __("Submit"),
+	});
+	if (!ok) return;
+	try {
+		await boqApi.submitBoq(boq.value.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to submit"), "error");
+	}
+}
+async function approve() {
+	const others = (projectBoqsRes.data || []).filter(
+		(b) => b.name !== boq.value.id && b.revision !== boq.value.revision
+	);
+	void others;
+	const ok = await confirmDialog({
+		title: __("Approve revision"),
+		message: __("Approve revision {0}? Any other approved revision on this project is superseded.", [boq.value.revision]),
+		confirmLabel: __("Approve"),
+	});
+	if (!ok) return;
+	try {
+		await boqApi.approveBoq(boq.value.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to approve"), "error");
+	}
+}
+// Revision popup (mirrors the prototype's S134 modal — a styled dialog with an
+// optional SCO reference + title, plus an inline duplicate-title check — instead of
+// a window.prompt).
+const revisionModal = ref(null); // null | { sourceSco, title }
+function openRevisionModal() {
+	revisionModal.value = { sourceSco: "", title: "" };
+}
+function closeRevisionModal() {
+	revisionModal.value = null;
+}
+const revisionTitleConflict = computed(() => {
+	const t = (revisionModal.value?.title || "").trim().toLowerCase();
+	if (!t) return false;
+	return (projectBoqsRes.data || []).some((b) => (b.title || "").trim().toLowerCase() === t);
+});
+async function submitRevision() {
+	if (!revisionModal.value || revisionTitleConflict.value) return;
+	try {
+		const name = await boqApi.createRevision(
+			boq.value.id,
+			revisionModal.value.sourceSco.trim() || null,
+			revisionModal.value.title.trim() || null
+		);
+		revisionModal.value = null;
+		if (name) router.push(`/boq/${name}`);
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to create revision"), "error");
+	}
+}
+async function removeBoq() {
+	const ok = await confirmDialog({
+		title: __("Delete BOQ"),
+		message: __("Delete BOQ {0} and all its rows? This cannot be undone.", [boq.value.id]),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await adapter.remove("BOQ", boq.value.id);
+		router.push("/boq");
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete BOQ"), "error");
+	}
+}
+async function explode(item) {
+	if (!item.assemblyId) {
+		showToast(__("Link an Assembly to this item first."), "error");
+		return;
+	}
+	try {
+		await boqApi.explodeItem(item.id);
+		reloadTree();
+		showToast(__("Exploded from assembly"));
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to explode"), "error");
+	}
+}
+
+// === CSV export (client-side, flat tree dump) ===
+function csvCell(v) {
+	const s = String(v ?? "");
+	return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function exportCsv() {
+	const lines = [];
+	lines.push(
+		["BOQ", boq.value.id, "Rev", boq.value.revision, "Status", boq.value.status]
+			.map(csvCell)
+			.join(",")
+	);
+	lines.push(
+		[
+			"Type",
+			"Code",
+			"Description",
+			"Unit",
+			"Planned Qty",
+			"Rate",
+			"Planned Amount",
+			"Actual Qty",
+			"Actual Amount",
+			"Work Package",
+			"Cost Head",
+		]
+			.map(csvCell)
+			.join(",")
+	);
+	for (const g of groups.value) {
+		lines.push(["Group", g.code, g.name].map(csvCell).join(","));
+		for (const it of boqItemsByGroup(g.id)) {
+			lines.push(
+				[
+					"Item",
+					it.code,
+					it.description,
+					it.unit,
+					it.plannedQty,
+					it.rate,
+					it.plannedAmount,
+					it.actualQty,
+					it.actualAmount,
+					it.workPackageId || "",
+					it.costHead || "",
+				]
+					.map(csvCell)
+					.join(",")
+			);
+			for (const si of boqSubItemsByItem(it.id)) {
+				lines.push(
+					["Sub", "↳", si.description, "", si.qtyPerUnit, si.rate, si.amount]
+						.map(csvCell)
+						.join(",")
+				);
+			}
+		}
+	}
+	const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `${boq.value.id}.csv`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+// === Import Estimate Template ===
+const importModal = ref(false);
+const importForm = ref({ template: "" });
+function openImport() {
+	importForm.value = { template: "" };
+	importModal.value = true;
+}
+async function doImport() {
+	if (!importForm.value.template) return;
+	try {
+		await boqApi.importTemplate(boq.value.id, importForm.value.template);
+		importModal.value = false;
+		reloadTree();
+		showToast(__("Template imported"));
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to import template"), "error");
+	}
+}
+
+// === Clone (project->project or WP->WP) ===
+const cloneModal = ref(false);
+const cloneForm = ref({ toProject: "", toWorkPackage: "", fromWorkPackage: "", title: "" });
+function openClone() {
+	cloneForm.value = { toProject: "", toWorkPackage: "", fromWorkPackage: "", title: "" };
+	cloneModal.value = true;
+}
+async function doClone() {
+	const f = cloneForm.value;
+	const sameProject = !f.toProject || f.toProject === boq.value.projectId;
+	const payload = sameProject
+		? {
+				from_project: boq.value.projectId,
+				to_project: boq.value.projectId,
+				from_work_package: f.fromWorkPackage,
+				to_work_package: f.toWorkPackage,
+		  }
+		: {
+				from_project: boq.value.projectId,
+				to_project: f.toProject,
+				to_work_package: f.toWorkPackage || null,
+				title: f.title || null,
+		  };
+	try {
+		const res = await boqApi.cloneBoq(payload);
+		cloneModal.value = false;
+		if (res?.boq && res.boq !== boq.value.id) router.push(`/boq/${res.boq}`);
+		else reloadTree();
+		showToast(__("Cloned"));
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to clone"), "error");
+	}
+}
+
+const canSubmit = computed(() => boq.value?.status === "Draft");
+const canApprove = computed(() => boq.value?.status === "Submitted");
+const isLocked = computed(
+	() => boq.value?.status === "Approved" || boq.value?.status === "Superseded"
+);
+const isEditable = computed(() => boq.value?.status === "Draft");
+
+// ===== Group add/edit/delete =====
+const groupModal = ref(null);
+const groupForm = ref({ code: "", name: "" });
+function openAddGroup() {
+	groupForm.value = { code: "", name: "" };
+	groupModal.value = { mode: "add" };
+}
+function openEditGroup(g) {
+	groupForm.value = { code: g.code, name: g.name };
+	groupModal.value = { mode: "edit", id: g.id };
+}
+// Code is optional. Blank → auto-generate: groups get the next unused letter
+// (A, B, C …); items get parentGroupCode.NN (A.01, A.02 …).
+function nextGroupCode() {
+	const used = new Set(groups.value.map((g) => (g.code || "").toUpperCase()));
+	for (let i = 0; i < 26; i++) {
+		const c = String.fromCharCode(65 + i);
+		if (!used.has(c)) return c;
+	}
+	let n = used.size + 1;
+	while (used.has("G" + n)) n++;
+	return "G" + n;
+}
+function nextItemCode(groupId) {
+	const g = groups.value.find((x) => x.id === groupId);
+	const prefix = g?.code || "X";
+	const items = boqItemsByGroup(groupId);
+	const used = new Set(items.map((i) => i.code || ""));
+	const re = new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\.(\\d+)$");
+	let max = 0;
+	for (const it of items) {
+		const m = (it.code || "").match(re);
+		if (m) max = Math.max(max, parseInt(m[1], 10));
+	}
+	let n = max + 1;
+	let code = `${prefix}.${String(n).padStart(2, "0")}`;
+	while (used.has(code)) {
+		n++;
+		code = `${prefix}.${String(n).padStart(2, "0")}`;
+	}
+	return code;
+}
+
+async function saveGroup() {
+	if (!groupForm.value.name.trim()) {
+		showToast(__("Name is required."), "error");
+		return;
+	}
+	const code = groupForm.value.code.trim() || nextGroupCode();
+	const payload = { code, group_name: groupForm.value.name.trim() };
+	try {
+		if (groupModal.value.mode === "add") {
+			await adapter.create("BOQ Group", { boq: boq.value.id, ...payload });
+		} else {
+			await adapter.update("BOQ Group", groupModal.value.id, payload);
+		}
+		groupModal.value = null;
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to save group"), "error");
+	}
+}
+async function deleteGroupConfirm(g) {
+	const items = boqItemsByGroup(g.id);
+	const msg = !items.length
+			? __('Delete group "{0} — {1}"?', [g.code, g.name])
+			: items.length === 1
+			? __('Delete group "{0} — {1}" with {2} item and their sub-items?', [g.code, g.name, items.length])
+			: __('Delete group "{0} — {1}" with {2} items and their sub-items?', [g.code, g.name, items.length]);
+	if (
+		!(await confirmDialog({
+			title: __("Delete group"),
+			message: msg,
+			confirmLabel: __("Delete"),
+			destructive: true,
+		}))
+	)
+		return;
+	try {
+		await adapter.remove("BOQ Group", g.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete group"), "error");
+	}
+}
+
+// ===== Item add/edit/delete =====
+const itemModal = ref(null);
+const itemForm = ref({
+	code: "",
+	description: "",
+	unit: "",
+	plannedQty: 0,
+	rate: 0,
+	taskId: null,
+	workPackageId: null,
+	costHead: "",
+	assemblyId: null,
+});
+// The BOQ's project — scopes the Work Package + Task pickers in the item modal
+// so you can only link records that belong to this BOQ's project.
+const boqProjectId = computed(() => boq.value?.projectId || "");
+const itemPlannedAmountPreview = computed(
+	() => (Number(itemForm.value.plannedQty) || 0) * (Number(itemForm.value.rate) || 0)
+);
+// Assemblies for the "Source" picker — pick one to auto-fill unit / rate /
+// description (the save handler then auto-explodes the line into sub-items).
+const assembliesRes = useDocTypeList("Assembly", {
+	fields: ["name", "assembly_name", "uom", "rate_per_unit"],
+	pageLength: 5000,
+	cache: "buildsuite-boq-item-assemblies",
+	auto: false, // fetched once on load (shared catalog, no company scope)
+});
+const assembliesMap = computed(() => {
+	const m = {};
+	for (const a of assembliesRes.data || [])
+		m[a.name] = {
+			name: a.assembly_name || a.name,
+			uom: a.uom || "",
+			rate: a.rate_per_unit || 0,
+		};
+	return m;
+});
+function onAssemblyPicked(id) {
+	itemForm.value.assemblyId = id || null;
+	if (!id) return;
+	const a = assembliesMap.value[id];
+	if (!a) return;
+	if (a.uom) itemForm.value.unit = a.uom;
+	itemForm.value.rate = a.rate;
+	if (!itemForm.value.description.trim()) itemForm.value.description = a.name;
+}
+function blankItemForm() {
+	return {
+		code: "",
+		description: "",
+		unit: "",
+		plannedQty: 0,
+		rate: 0,
+		taskId: null,
+		workPackageId: null,
+		costHead: "",
+		assemblyId: null,
+	};
+}
+function openAddItem(groupId) {
+	itemForm.value = blankItemForm();
+	itemModal.value = { mode: "add", groupId };
+}
+function openEditItem(item) {
+	itemForm.value = {
+		code: item.code,
+		description: item.description,
+		unit: item.unit,
+		plannedQty: item.plannedQty,
+		rate: item.rate,
+		taskId: item.taskId,
+		workPackageId: item.workPackageId,
+		costHead: item.costHead || "",
+		assemblyId: item.assemblyId,
+	};
+	itemModal.value = { mode: "edit", id: item.id };
+}
+async function saveItem() {
+	const f = itemForm.value;
+	if (!f.description.trim() || !f.unit) {
+		showToast(__("Description and unit are required."), "error");
+		return;
+	}
+	const groupId =
+		itemModal.value.mode === "add"
+			? itemModal.value.groupId
+			: allItems.value.find((i) => i.id === itemModal.value.id)?.groupId;
+	const payload = {
+		code: f.code.trim() || nextItemCode(groupId),
+		description: f.description.trim(),
+		unit: f.unit,
+		planned_qty: Number(f.plannedQty) || 0,
+		rate: Number(f.rate) || 0,
+		task: f.taskId || null,
+		work_package: f.workPackageId || null,
+		cost_head: f.costHead || null,
+		assembly: f.assemblyId || null,
+		quantity_source: f.assemblyId ? "Assembly" : "Manual",
+	};
+	try {
+		if (itemModal.value.mode === "add") {
+			const created = await adapter.create("BOQ Item", {
+				boq: boq.value.id,
+				boq_group: itemModal.value.groupId,
+				...payload,
+			});
+			itemModal.value = null;
+			// An Assembly-sourced line auto-explodes so its snapshot sub-items
+			// appear in the tree immediately (mirrors the prototype's save flow).
+			if (f.assemblyId && created?.name) {
+				try {
+					await boqApi.explodeItem(created.name);
+				} catch (e) {
+					showToast(
+						parseFrappeError(e).summary ?? __("Item saved, but explode failed"),
+						"error"
+					);
+				}
+			}
+			reloadTree();
+		} else {
+			await adapter.update("BOQ Item", itemModal.value.id, payload);
+			itemModal.value = null;
+			reloadTree();
+		}
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to save item"), "error");
+	}
+}
+async function deleteItemConfirm(item) {
+	const subs = boqSubItemsByItem(item.id);
+	const msg = !subs.length
+			? __('Delete item "{0} — {1}"?', [item.code, item.description])
+			: subs.length === 1
+			? __('Delete item "{0} — {1}" with {2} sub-item?', [item.code, item.description, subs.length])
+			: __('Delete item "{0} — {1}" with {2} sub-items?', [item.code, item.description, subs.length]);
+	if (
+		!(await confirmDialog({
+			title: __("Delete item"),
+			message: msg,
+			confirmLabel: __("Delete"),
+			destructive: true,
+		}))
+	)
+		return;
+	try {
+		await adapter.remove("BOQ Item", item.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete item"), "error");
+	}
+}
+
+// ===== Sub-item add/edit/delete =====
+const subItemModal = ref(null);
+const subItemForm = ref({ rateMasterId: null, description: "", qtyPerUnit: 0, rate: 0 });
+const rateMasterRes = useDocTypeList("Construction Rate Master", {
+	fields: ["name", "rate_code", "rate_name", "current_rate", "category"],
+	orderBy: "rate_code asc",
+	pageLength: 0,
+	cache: "buildsuite-boq-rate-master",
+	auto: false, // fetched once on load (shared catalog, no company scope)
+});
+
+// Assembly + Rate Master are a shared, company-agnostic catalog — fetch the whole library once
+// (no company scoping; a BOQ of any company can use any assembly/rate).
+assembliesRes.fetch?.();
+rateMasterRes.fetch?.();
+const rateMasterOptions = computed(() =>
+	(rateMasterRes.data || []).map((r) => ({
+		id: r.name,
+		code: r.rate_code,
+		description: r.rate_name,
+		currentRate: r.current_rate,
+		category: r.category,
+	}))
+);
+function openAddSubItem(item) {
+	subItemForm.value = { rateMasterId: null, description: "", qtyPerUnit: 0, rate: 0 };
+	subItemModal.value = { mode: "add", itemId: item.id, parentUnit: item.unit };
+}
+function openEditSubItem(si, item) {
+	subItemForm.value = {
+		rateMasterId: si.rateMasterId || null,
+		description: si.description,
+		qtyPerUnit: si.qtyPerUnit,
+		rate: si.rate,
+	};
+	subItemModal.value = { mode: "edit", id: si.id, parentUnit: item.unit };
+}
+function onRateMasterPick(rateMasterId) {
+	if (!rateMasterId) return;
+	const rm = rateMasterOptions.value.find((r) => r.id === rateMasterId);
+	if (rm) {
+		subItemForm.value.description = rm.description;
+		subItemForm.value.rate = rm.currentRate;
+	}
+}
+const subItemAmountPreview = computed(
+	() => (Number(subItemForm.value.qtyPerUnit) || 0) * (Number(subItemForm.value.rate) || 0)
+);
+async function saveSubItem() {
+	const f = subItemForm.value;
+	if (!f.description.trim() || Number(f.qtyPerUnit) <= 0) {
+		showToast(__("Description and a non-zero quantity per unit are required."), "error");
+		return;
+	}
+	const payload = {
+		rate_master: f.rateMasterId || null,
+		description: f.description.trim(),
+		qty_per_unit: Number(f.qtyPerUnit) || 0,
+		rate: Number(f.rate) || 0,
+	};
+	try {
+		if (subItemModal.value.mode === "add") {
+			await adapter.create("BOQ Sub Item", {
+				boq: boq.value.id,
+				boq_item: subItemModal.value.itemId,
+				...payload,
+			});
+		} else {
+			await adapter.update("BOQ Sub Item", subItemModal.value.id, payload);
+		}
+		subItemModal.value = null;
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to save sub-item"), "error");
+	}
+}
+async function deleteSubItemConfirm(si) {
+	if (
+		!(await confirmDialog({
+			title: __("Delete sub-item"),
+			message: __('Delete sub-item "{0}"?', [si.description]),
+			confirmLabel: __("Delete"),
+			destructive: true,
+		}))
+	)
+		return;
+	try {
+		await adapter.remove("BOQ Sub Item", si.id);
+		reloadTree();
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to delete sub-item"), "error");
+	}
+}
+
+// Primary action dispatcher — Submit when Draft, Approve when Submitted.
+const showPrimary = computed(
+	() => (canSubmit.value || canApprove.value) && canSubmitCap("boq")
+);
+const primaryLabel = computed(() =>
+	canSubmit.value ? __("Submit for approval") : canApprove.value ? __("Approve") : ""
+);
+function primaryAction() {
+	if (canSubmit.value) submit();
+	else if (canApprove.value) approve();
+}
+
+// The BOQ id + revision live in the subtitle (as in the prototype), so the
+// breadcrumb trail ends at the project — not a raw BOQ-id crumb.
+const subtitle = computed(() => (boq.value ? `${boq.value.id} · R${boq.value.revision}` : ""));
+
+const breadcrumbs = computed(() => {
+	const out = [
+		{ label: "BuildSuite Core", to: "/" },
+		{ label: __("BOQ"), to: "/boq" },
+	];
+	if (project.value)
+		out.push({ label: project.value.name, to: `/projects/${project.value.id}` });
+	return out;
+});
+</script>
+
+<template>
+	<div v-if="!boq" class="px-6 py-12 text-center text-ink-500">
+		<div class="text-sm">
+			BOQ <span class="font-mono">{{ id }}</span> not found.
+		</div>
+		<DeskLink to="/boq" class="text-sm mt-2 inline-block">{{ __("← Back to BOQ list") }}</DeskLink>
+	</div>
+
+	<DeskPage
+		v-else
+		:title="boq.title"
+		:subtitle="subtitle"
+		:breadcrumbs="breadcrumbs"
+		:status="boq.status"
+	>
+		<DeskForm>
+			<template #action-bar>
+				<DeskActionBar
+					:show-save="showPrimary"
+					:save-label="primaryLabel"
+					:show-cancel="false"
+					@save="primaryAction"
+				>
+					<template #left>
+						<span v-if="sourceSco" class="text-xs text-ink-500">
+							{{ __("from SCO") }}
+							<DeskLink to="/sco" class="font-mono">{{ sourceSco.id }}</DeskLink>
+						</span>
+					</template>
+					<template #menu>
+						<!-- Compare toggle — LEFT AS-IS per prompt (Phase-5 prelude: Revision Compare page).
+                 Uses brand-green styling and rounded corners deliberately. -->
+						<button
+							v-if="baseBoq"
+							type="button"
+							class="text-xs px-2.5 py-1.5 border border-ink-200 rounded hover:bg-ink-50"
+							:class="
+								compareMode ? 'bg-brand-50 border-brand-300 text-brand-700' : ''
+							"
+							@click="compareMode = !compareMode"
+						>
+							{{
+								compareMode
+									? __("✓ Comparing R{0}", [baseBoq.revision])
+									: __("Compare to R{0}", [baseBoq.revision])
+							}}
+						</button>
+
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="recalculate"
+						>
+							↻ {{ __("Recalc actuals") }}
+						</button>
+
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openRevisionModal"
+						>
+							+ {{ __("Revision") }}
+						</button>
+
+						<button
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="exportCsv"
+						>
+							⬇ {{ __("Export CSV") }}
+						</button>
+
+						<button
+							v-if="isEditable && canEdit('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openImport"
+						>
+							{{ __("Import Template…") }}
+						</button>
+
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openClone"
+						>
+							{{ __("Clone…") }}
+						</button>
+
+						<button
+							v-if="!isLocked && canDelete('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px; color: #b91c1c"
+							@click="removeBoq"
+						>
+							{{ __("Delete") }}
+						</button>
+					</template>
+				</DeskActionBar>
+			</template>
+
+			<!-- KPI strip — Desk density: 6 small cards, modest numbers -->
+			<div class="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4">
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Revision") }}
+					</div>
+					<div class="text-base font-semibold text-ink-900 mt-0.5">
+						R{{ boq.revision }}
+					</div>
+					<div v-if="baseBoq" class="text-[10px] text-ink-500 mt-0.5">
+						{{ __("from") }}
+						<DeskLink :to="`/boq/${baseBoq.id}`" class="font-mono"
+							>R{{ baseBoq.revision }}</DeskLink
+						>
+					</div>
+					<div v-else class="text-[10px] text-ink-400 mt-0.5">{{ __("original") }}</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Groups · Items") }}
+					</div>
+					<div class="text-base font-semibold text-ink-900 mt-0.5">
+						{{ groups.length }} · {{ totals.itemCount }}
+					</div>
+					<div class="text-[10px] text-ink-500 mt-0.5">{{ __("across this BOQ") }}</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Planned") }}
+					</div>
+					<div class="text-base font-semibold text-ink-900 mt-0.5 tabular-nums">
+						{{ fmtCompactINR(totals.planned) }}
+					</div>
+					<div class="text-[10px] text-ink-500 mt-0.5 tabular-nums">
+						{{ fmtINR(totals.planned) }}
+					</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Actual") }}
+					</div>
+					<div class="text-base font-semibold text-ink-700 mt-0.5 tabular-nums">
+						{{ fmtCompactINR(totals.actual) }}
+					</div>
+					<div class="text-[10px] text-ink-500 mt-0.5">
+						{{ pctOf(totals.actual, totals.planned).toFixed(1) }}% {{ __("of plan") }}
+					</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Variance") }}
+					</div>
+					<div
+						class="text-base font-semibold mt-0.5 tabular-nums"
+						:class="variancePill(totals.variancePct)"
+					>
+						{{ totals.variancePct > 0 ? "+" : "" }}{{ totals.variancePct.toFixed(1) }}%
+					</div>
+					<div class="text-[10px] text-ink-500 mt-0.5 tabular-nums">
+						{{ fmtCompactINR(totals.variance) }} {{ __("delta") }}
+					</div>
+				</div>
+				<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+					<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+						{{ __("Prepared") }}
+					</div>
+					<div class="flex items-center gap-1 mt-1">
+						<UserAvatar :user-id="boq.preparedBy" size="xs" />
+						<span class="text-[11px] text-ink-500">{{
+							fmtDate(boq.preparedDate)
+						}}</span>
+					</div>
+					<div v-if="boq.approvedBy" class="flex items-center gap-1 mt-1">
+						<UserAvatar :user-id="boq.approvedBy" size="xs" />
+						<span class="text-[11px] text-success-700">{{
+							fmtDate(boq.approvedDate)
+						}}</span>
+					</div>
+					<div v-else class="text-[10px] text-ink-400 mt-1">{{ __("awaiting approval") }}</div>
+				</div>
+			</div>
+
+			<!-- Toolbar above the tree -->
+			<div class="flex items-center gap-2 mb-1.5">
+				<button type="button" @click="expandAll" class="desk-link text-xs">
+					{{ __("Expand all") }}
+				</button>
+				<span class="text-ink-300 text-xs">·</span>
+				<button type="button" @click="collapseAll" class="desk-link text-xs">
+					{{ __("Collapse all") }}
+				</button>
+				<!-- Tree search — filters to matching paths + auto-expands -->
+				<div class="relative ml-2">
+					<svg
+						class="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400 pointer-events-none"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<circle cx="11" cy="11" r="8" />
+						<path d="m21 21-4.3-4.3" />
+					</svg>
+					<input
+						v-model="search"
+						type="text"
+						:aria-label="__('Search BOQ tree by code or description')"
+						:placeholder="__('Search code / description…')"
+						class="desk-input !py-1 !text-xs"
+						style="width: 240px; padding-left: 26px; padding-right: 22px"
+					/>
+					<button
+						v-if="search"
+						type="button"
+						class="absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700 text-sm leading-none"
+						@click="search = ''"
+					>
+						×
+					</button>
+				</div>
+				<span
+					v-if="searching"
+					class="text-[11px] tabular-nums"
+					:class="filterState?.matchCount ? 'text-ink-500' : 'text-danger-600'"
+				>
+					{{
+						filterState?.matchCount
+							? (filterState.matchCount === 1
+								? __("{0} match", [filterState.matchCount])
+								: __("{0} matches", [filterState.matchCount]))
+							: __("No matches")
+					}}
+				</span>
+				<div v-if="compareMode && baseBoq" class="ml-2 text-[11px] text-ink-500">
+					{{ __("Δ vs R{0} shown on each item row", [baseBoq.revision]) }}
+				</div>
+				<div class="ml-auto flex items-center gap-2">
+					<span v-if="!isEditable" class="text-[11px] text-ink-400 italic">
+						{{ __(boq.status) }} — read-only · use
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							@click="createRevision"
+							class="desk-link"
+						>
+							+ {{ __("Revision") }}
+						</button>
+						to make changes
+					</span>
+					<button
+						v-if="isEditable && canEdit('boq')"
+						type="button"
+						class="desk-save-btn"
+						@click="openAddGroup"
+					>
+						+ {{ __("Add Group") }}
+					</button>
+				</div>
+			</div>
+
+			<!-- The 3-level tree — Desk styling. overflow-x-auto so the row grid keeps
+			     its full min-width on narrow viewports. -->
+			<div class="bg-white border border-ink-200 overflow-x-auto" style="border-radius: 2px">
+				<!-- Header strip -->
+				<div
+					class="grid items-center bg-ink-50 border-b border-ink-200 text-[11px] text-ink-500 uppercase tracking-wider font-semibold"
+					:style="treeGridStyle"
+				>
+					<div></div>
+					<div class="px-3 py-2">{{ __("Code") }}</div>
+					<div class="px-3 py-2">{{ __("Description") }}</div>
+					<div class="px-3 py-2">{{ __("Unit") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Plan Qty") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Rate") }} ({{ currencySymbol() }})</div>
+					<div class="px-3 py-2 text-right">{{ __("Planned") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Committed") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Actual") }}</div>
+					<div class="px-3 py-2 text-right">{{ __("Variance") }}</div>
+					<div class="px-3 py-2">{{ __("WP") }}</div>
+					<div class="px-3 py-2 text-center">{{ __("Task") }}</div>
+					<div class="px-3 py-2">{{ __("Cost Head") }}</div>
+				</div>
+
+				<template v-for="g in visibleGroupsList" :key="g.id">
+					<!-- Group row — bold, light grey, slightly larger -->
+					<div
+						class="relative group/row grid items-center border-b border-ink-200 hover:bg-ink-100 cursor-pointer"
+						:class="
+							searching && filterState?.mGroups.has(g.id)
+								? 'bg-warning-50'
+								: 'bg-ink-50'
+						"
+						:style="treeGridStyle"
+						@click="toggleGroup(g.id)"
+					>
+						<div class="px-2 text-ink-500 text-xs">
+							{{ groupExpanded(g) ? "▾" : "▸" }}
+						</div>
+						<div class="px-3 py-2 font-mono text-xs text-ink-700">{{ g.code }}</div>
+						<div class="px-3 py-2 text-sm font-semibold text-ink-900">
+							{{ g.name }}
+						</div>
+						<div></div>
+						<div></div>
+						<div class="px-3 py-2 text-right text-[11px] text-ink-500">
+							{{ groupTotals(g.id).count }} {{ __("items") }}
+						</div>
+						<div
+							class="px-3 py-2 text-right tabular-nums text-sm font-medium text-ink-900"
+						>
+							{{ fmtCompactINR(groupTotals(g.id).planned) }}
+						</div>
+						<div
+							class="px-3 py-2 text-right tabular-nums text-sm text-info-700"
+							:title="__('Open subcontractor work orders mapped to cost code {0}', [g.code])"
+						>
+							{{ fmtCompactINR(groupCommitted(g)) }}
+						</div>
+						<div class="px-3 py-2 text-right text-sm text-ink-700">
+							<span v-if="groupActual(g)" class="relative inline-block group/cov">
+								<button
+									type="button"
+									class="tabular-nums text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
+									:title="__('Actual for {0} — click to see the source documents', [g.code])"
+									@click.stop="openGroupActuals(g)"
+								>
+									{{ fmtCompactINR(groupActual(g)) }}
+								</button>
+								<!-- Coverage shown on hover only, so it doesn't grow the row height. -->
+								<span
+									v-if="groupCoverage(g) && groupCoverage(g).groupCoded > 0.5"
+									class="pointer-events-none absolute right-0 bottom-full mb-1 hidden group-hover/cov:block z-30 whitespace-nowrap bg-ink-900 text-white text-[10px] px-2 py-1 rounded shadow-lg"
+								>
+									{{ __("{0} of {1} at item level", [fmtCompactINR(groupCoverage(g).itemCoded), fmtCompactINR(groupCoverage(g).actual)]) }}
+								</span>
+							</span>
+							<span v-else class="text-ink-300">—</span>
+						</div>
+						<div
+							class="px-3 py-2 text-right text-sm tabular-nums font-medium"
+							:class="
+								variancePill(
+									((groupActual(g) - groupTotals(g.id).planned) /
+										(groupTotals(g.id).planned || 1)) *
+										100
+								)
+							"
+						>
+							{{
+								groupTotals(g.id).planned
+									? (
+											((groupActual(g) - groupTotals(g.id).planned) /
+												groupTotals(g.id).planned) *
+											100
+									  ).toFixed(1)
+									: "0.0"
+							}}%
+						</div>
+						<div></div>
+						<div></div>
+						<div></div>
+
+						<!-- Edit / Delete (hover-visible, only when BOQ is Draft) -->
+						<div
+							v-if="isEditable && canEdit('boq')"
+							class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm"
+							style="border-radius: 2px"
+						>
+							<button
+								type="button"
+								@click.stop="openEditGroup(g)"
+								class="px-1.5 py-0.5 text-xs hover:bg-ink-50"
+								:title="__('Edit group')"
+							>
+								<svg
+									class="w-3.5 h-3.5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+									v-html="getWorkspaceIconPath('pencil')"
+								/>
+							</button>
+							<button
+								type="button"
+								@click.stop="deleteGroupConfirm(g)"
+								class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50"
+								:title="__('Delete group')"
+							>
+								<svg
+									class="w-3.5 h-3.5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+									v-html="getWorkspaceIconPath('trash')"
+								/>
+							</button>
+						</div>
+					</div>
+
+					<!-- Items inside group -->
+					<template v-if="groupExpanded(g)">
+						<template v-for="item in visibleItemsFor(g)" :key="item.id">
+							<div
+								class="relative group/row grid items-center border-b border-ink-100 hover:bg-brand-50 cursor-pointer"
+								:class="{
+									'bg-warning-50': searching && filterState?.mItems.has(item.id),
+								}"
+								:style="treeGridStyle"
+								@click="toggleItem(item.id)"
+							>
+								<!-- Edit / Delete (hover-visible, only when BOQ is Draft) -->
+								<div
+									v-if="isEditable && canEdit('boq')"
+									class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
+									style="border-radius: 2px"
+								>
+									<button
+										v-if="item.assemblyId"
+										type="button"
+										@click.stop="explode(item)"
+										class="px-1.5 py-0.5 text-xs text-brand-700 hover:bg-brand-50"
+										:title="__('Explode from assembly into sub-items')"
+									>
+										⚡
+									</button>
+									<button
+										type="button"
+										@click.stop="openEditItem(item)"
+										class="px-1.5 py-0.5 text-xs hover:bg-ink-50"
+										:title="__('Edit item')"
+									>
+										<svg
+											class="w-3.5 h-3.5"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.8"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+											v-html="getWorkspaceIconPath('pencil')"
+										/>
+									</button>
+									<button
+										type="button"
+										@click.stop="deleteItemConfirm(item)"
+										class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50"
+										:title="__('Delete item')"
+									>
+										<svg
+											class="w-3.5 h-3.5"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.8"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+											v-html="getWorkspaceIconPath('trash')"
+										/>
+									</button>
+								</div>
+								<div class="px-2 text-ink-400 text-[10px]">
+									{{
+										boqSubItemsByItem(item.id).length
+											? itemExpanded(item)
+												? "▾"
+												: "▸"
+											: "·"
+									}}
+								</div>
+								<div class="px-3 py-1.5 font-mono text-xs text-ink-700">
+									{{ item.code }}
+								</div>
+								<div class="px-3 py-1.5 text-sm text-ink-800">
+									{{ item.description }}
+									<!-- LEFT AS-IS per prompt (Phase-5 prelude): Δ chip uses brand-tinted danger/success styling -->
+									<span
+										v-if="
+											compareMode &&
+											baseAmount(item.code) !== null &&
+											baseAmount(item.code) !== item.plannedAmount
+										"
+										class="ml-2 text-[10px] px-1 py-0.5 rounded font-medium"
+										:class="
+											item.plannedAmount > baseAmount(item.code)
+												? 'bg-danger-50 text-danger-700'
+												: 'bg-success-50 text-success-700'
+										"
+										>Δ
+										{{ item.plannedAmount > baseAmount(item.code) ? "+" : ""
+										}}{{
+											fmtCompactINR(
+												item.plannedAmount - baseAmount(item.code)
+											)
+										}}</span
+									>
+								</div>
+								<div class="px-3 py-1.5 text-xs text-ink-600">{{ item.unit }}</div>
+								<div
+									class="px-3 py-1.5 text-right tabular-nums text-sm text-ink-700"
+								>
+									{{ item.plannedQty.toLocaleString("en-IN") }}
+								</div>
+								<div
+									class="px-3 py-1.5 text-right tabular-nums text-sm text-ink-700"
+								>
+									{{ item.rate.toLocaleString("en-IN") }}
+								</div>
+								<div
+									class="px-3 py-1.5 text-right tabular-nums text-sm text-ink-900"
+								>
+									{{ fmtCompactINR(item.plannedAmount) }}
+								</div>
+								<div></div>
+								<div class="px-3 py-1.5">
+									<div class="flex flex-col items-end">
+										<button
+											v-if="itemActual(item)"
+											type="button"
+											class="tabular-nums text-sm text-ink-700 hover:text-brand-700 hover:underline decoration-dotted"
+											:title="`Actual for ${item.code} — click to see the source documents`"
+											@click.stop="openItemActuals(item)"
+										>
+											{{ fmtCompactINR(itemActual(item)) }}
+										</button>
+										<span v-else class="tabular-nums text-sm text-ink-300"
+											>—</span
+										>
+										<div
+											class="w-full h-1 bg-ink-100 overflow-hidden mt-1"
+											style="border-radius: 2px"
+										>
+											<div
+												class="h-full"
+												:class="
+													itemActual(item) > item.plannedAmount
+														? 'bg-danger-500'
+														: itemActual(item) >
+														  item.plannedAmount * 0.9
+														? 'bg-warning-500'
+														: 'bg-success-500'
+												"
+												:style="`width: ${Math.min(
+													100,
+													pctOf(itemActual(item), item.plannedAmount)
+												).toFixed(1)}%`"
+											></div>
+										</div>
+									</div>
+								</div>
+								<div
+									class="px-3 py-1.5 text-right tabular-nums text-sm"
+									:class="
+										variancePill(
+											((itemActual(item) - item.plannedAmount) /
+												(item.plannedAmount || 1)) *
+												100
+										)
+									"
+								>
+									{{
+										item.plannedAmount
+											? (
+													((itemActual(item) - item.plannedAmount) /
+														item.plannedAmount) *
+													100
+											  ).toFixed(1)
+											: "0.0"
+									}}%
+								</div>
+								<div class="px-3 py-1.5">
+									<DeskLink
+										v-if="item.workPackageId"
+										:to="`/work-packages/${item.workPackageId}`"
+										@click.stop
+										class="text-[10px] font-mono"
+										:title="wpName(item.workPackageId)"
+										>{{ wpCode(item.workPackageId) }}</DeskLink
+									>
+									<span v-else class="text-[10px] text-ink-300">—</span>
+								</div>
+								<div class="px-3 py-1.5 text-center">
+									<DeskLink
+										v-if="item.taskId"
+										:to="`/tasks/${item.taskId}`"
+										@click.stop
+										class="text-[10px] font-mono"
+										>{{ item.taskId.slice(-4) }}</DeskLink
+									>
+									<span v-else class="text-[10px] text-ink-300">—</span>
+								</div>
+								<div class="px-3 py-1.5">
+									<span
+										v-if="item.costHead"
+										class="text-[10px] px-1.5 py-0.5 bg-ink-100 text-ink-700"
+										style="border-radius: 9999px"
+										>{{ item.costHead }}</span
+									>
+									<span v-else class="text-[10px] text-ink-300">—</span>
+								</div>
+							</div>
+
+							<!-- Sub-items: rate analysis. Indented, smaller, Rate Master links Desk-blue. -->
+							<template v-if="itemExpanded(item)">
+								<div
+									v-for="si in visibleSubsFor(item)"
+									:key="si.id"
+									class="relative group/row grid items-center border-b border-ink-50"
+									:class="
+										searching && filterState?.mSubs.has(si.id)
+											? 'bg-warning-50'
+											: 'bg-ink-50/40'
+									"
+									:style="treeGridStyle"
+								>
+									<div></div>
+									<div></div>
+									<div class="px-3 py-1 text-xs text-ink-600 pl-10">
+										↳ {{ si.description }}
+										<DeskLink
+											v-if="si.rateMasterId"
+											:to="`/rate-master/${si.rateMasterId}`"
+											@click.stop
+											class="ml-2 text-[10px] font-mono"
+											>{{ si.rateMasterId }}</DeskLink
+										>
+									</div>
+									<div class="px-3 py-1 text-xs text-ink-500">
+										{{ si.uom || item.unit }}
+									</div>
+									<div
+										class="px-3 py-1 text-right tabular-nums text-xs text-ink-500"
+									>
+										{{ si.qtyPerUnit }}
+									</div>
+									<div
+										class="px-3 py-1 text-right tabular-nums text-xs text-ink-500"
+									>
+										{{ si.rate.toLocaleString("en-IN") }}
+									</div>
+									<div
+										class="px-3 py-1 text-right tabular-nums text-xs text-ink-700"
+									>
+										{{ fmtINR(si.amount) }}
+									</div>
+									<div></div>
+									<div class="px-3 py-1 text-right text-[10px] text-ink-400">
+										{{ __("per") }} {{ item.unit }}
+									</div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+
+									<!-- Edit / Delete (hover-visible) -->
+									<div
+										v-if="isEditable && canEdit('boq')"
+										class="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex bg-white border border-ink-200 shadow-fp-sm z-10"
+										style="border-radius: 2px"
+									>
+										<button
+											type="button"
+											@click.stop="openEditSubItem(si, item)"
+											class="px-1.5 py-0.5 text-xs hover:bg-ink-50"
+											:title="__('Edit sub-item')"
+										>
+											<svg
+												class="w-3.5 h-3.5"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.8"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												aria-hidden="true"
+												v-html="getWorkspaceIconPath('pencil')"
+											/>
+										</button>
+										<button
+											type="button"
+											@click.stop="deleteSubItemConfirm(si)"
+											class="px-1.5 py-0.5 text-xs text-danger-700 hover:bg-danger-50"
+											:title="__('Delete sub-item')"
+										>
+											<svg
+												class="w-3.5 h-3.5"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.8"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												aria-hidden="true"
+												v-html="getWorkspaceIconPath('trash')"
+											/>
+										</button>
+									</div>
+								</div>
+								<div
+									v-if="!boqSubItemsByItem(item.id).length"
+									class="grid items-center border-b border-ink-50 bg-ink-50/40 text-[11px] text-ink-400 italic"
+									:style="treeGridStyle"
+								>
+									<div></div>
+									<div></div>
+									<div class="px-3 py-1 pl-10">
+										{{ __("No rate analysis recorded for this item.") }}
+									</div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+								</div>
+
+								<!-- Inline "+ Add Sub-item" affordance (hidden while searching) -->
+								<div
+									v-if="isEditable && !searching && canEdit('boq')"
+									class="grid items-center border-b border-dashed border-ink-200 bg-ink-50/40 cursor-pointer hover:bg-brand-50"
+									:style="treeGridStyle"
+									@click="openAddSubItem(item)"
+								>
+									<div></div>
+									<div></div>
+									<div
+										class="px-3 py-1 pl-10 text-[11px] text-brand-700 font-medium"
+									>
+										+ {{ __("Add sub-item to {0}", [item.code]) }}
+									</div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+									<div></div>
+								</div>
+							</template>
+						</template>
+
+						<!-- Inline "+ Add Item" affordance — at the bottom of the expanded group (hidden while searching) -->
+						<div
+							v-if="isEditable && !searching && canEdit('boq')"
+							class="grid items-center border-b border-dashed border-ink-200 cursor-pointer hover:bg-brand-50"
+							:style="treeGridStyle"
+							@click="openAddItem(g.id)"
+						>
+							<div></div>
+							<div></div>
+							<div class="px-3 py-1.5 text-xs text-brand-700 font-medium">
+								+ {{ __("Add item to {0} — {1}", [g.code, g.name]) }}
+							</div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+							<div></div>
+						</div>
+					</template>
+				</template>
+
+				<div v-if="!groups.length" class="px-4 py-12 text-center text-sm text-ink-400">
+					{{ __("This BOQ has no groups yet.") }}
+					<button
+						v-if="isEditable && canEdit('boq')"
+						type="button"
+						class="desk-link ml-1"
+						@click="openAddGroup"
+					>
+						+ {{ __("Add the first group") }}
+					</button>
+				</div>
+			</div>
+
+			<!-- ========== Group modal (add + edit) ========== -->
+			<div
+				v-if="groupModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="groupModal = null"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ groupModal.mode === "add" ? __("New group") : __("Edit group") }}
+						</h2>
+						<button
+							type="button"
+							@click="groupModal = null"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+							:aria-label="__('Close')"
+						>
+							<svg
+								class="w-4 h-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								v-html="getWorkspaceIconPath('x')"
+							/>
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<div class="grid grid-cols-3 gap-3">
+							<DeskField :label="__('Code')" :hint="__('Leave blank to auto-generate (A, B, C…)')">
+								<DeskInput v-model="groupForm.code" :placeholder="__('Auto')" />
+							</DeskField>
+							<div class="col-span-2">
+								<DeskField :label="__('Name')" required>
+									<DeskInput
+										v-model="groupForm.name"
+										:placeholder="__('e.g. Civil Works — RCC')"
+									/>
+								</DeskField>
+							</div>
+						</div>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="groupModal = null"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button v-if="canEdit('boq')" type="button" @click="saveGroup" class="desk-save-btn">
+							{{ groupModal.mode === "add" ? __("Create group") : __("Save changes") }}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ========== Item modal (add + edit) ========== -->
+			<div
+				v-if="itemModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="itemModal = null"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-lg"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ itemModal.mode === "add" ? __("New item") : __("Edit item") }}
+						</h2>
+						<button
+							type="button"
+							@click="itemModal = null"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+							:aria-label="__('Close')"
+						>
+							<svg
+								class="w-4 h-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								v-html="getWorkspaceIconPath('x')"
+							/>
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<DeskField
+							:label="__('Source — Assembly')"
+							:hint="__('Pick an Assembly to auto-fill unit / rate and explode into snapshot sub-items on save. Leave blank for a manual line.')"
+						>
+							<DeskLinkPicker
+								v-model="itemForm.assemblyId"
+								doctype="Assembly"
+								label-field="assembly_name"
+								value-field="name"
+								:search-fields="['assembly_code', 'assembly_name', 'name']"
+								:placeholder="__('— Manual line —')"
+								@change="onAssemblyPicked"
+							/>
+						</DeskField>
+						<div class="grid grid-cols-3 gap-3">
+							<DeskField
+								:label="__('Code')"
+								:hint="__('Leave blank to auto-generate (e.g. A.05)')"
+							>
+								<DeskInput v-model="itemForm.code" :placeholder="__('Auto')" />
+							</DeskField>
+							<div class="col-span-2">
+								<DeskField :label="__('Unit')" required>
+									<DeskLinkPicker
+										v-model="itemForm.unit"
+										doctype="UOM"
+										label-field="name"
+										value-field="name"
+										:search-fields="['name']"
+										:placeholder="__('m³, kg, nos…')"
+									/>
+								</DeskField>
+							</div>
+						</div>
+						<DeskField :label="__('Description')" required>
+							<DeskTextarea
+								v-model="itemForm.description"
+								:rows="2"
+								:placeholder="__('What does this line of work include?')"
+							/>
+						</DeskField>
+						<div class="grid grid-cols-3 gap-3">
+							<DeskField :label="__('Planned qty')">
+								<DeskInput v-model="itemForm.plannedQty" type="number" />
+							</DeskField>
+							<DeskField
+								:label="`${__('Rate')} (${currencySymbol()})`"
+								:hint="itemForm.assemblyId ? __('Auto from Assembly') : ''"
+							>
+								<DeskInput v-model="itemForm.rate" type="number" />
+							</DeskField>
+							<DeskField :label="__('Planned amount')" :hint="__('qty × rate (auto)')">
+								<div class="desk-input bg-ink-50 text-right tabular-nums">
+									{{ fmtINR(itemPlannedAmountPreview) }}
+								</div>
+							</DeskField>
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<DeskField
+								:label="__('Work Package (tag)')"
+								:hint="__('Optional. Drives per-WP roll-up in the BOQ summary.')"
+							>
+								<DeskLinkPicker
+									v-model="itemForm.workPackageId"
+									doctype="Work Package"
+									label-field="work_package_name"
+									value-field="name"
+									:search-fields="['work_package_name', 'code', 'name']"
+									:filters="boqProjectId ? [['project', '=', boqProjectId]] : []"
+									:placeholder="__('— Unscoped —')"
+								/>
+							</DeskField>
+							<DeskField
+								:label="__('Cost head')"
+								:hint="__('Material / Labour / Equipment / Subcontract / Preliminaries / Other')"
+							>
+								<DeskSelect v-model="itemForm.costHead">
+									<option value="">—</option>
+									<option value="Material">{{ __("Material") }}</option>
+									<option value="Labour">{{ __("Labour") }}</option>
+									<option value="Equipment">{{ __("Equipment") }}</option>
+									<option value="Subcontract">{{ __("Subcontract") }}</option>
+									<option value="Preliminaries">{{ __("Preliminaries") }}</option>
+									<option value="Other">{{ __("Other") }}</option>
+								</DeskSelect>
+							</DeskField>
+						</div>
+						<DeskField
+							:label="__('Link to task')"
+							:hint="__('Optional · drives live actuals from task progress')"
+						>
+							<DeskLinkPicker
+								v-model="itemForm.taskId"
+								doctype="Task"
+								label-field="subject"
+								value-field="name"
+								:search-fields="['subject', 'name']"
+								:filters="boqProjectId ? [['project', '=', boqProjectId]] : []"
+								:placeholder="__('— Not linked —')"
+							/>
+						</DeskField>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="itemModal = null"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button v-if="canEdit('boq')" type="button" @click="saveItem" class="desk-save-btn">
+							{{ itemModal.mode === "add" ? __("Create item") : __("Save changes") }}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ========== Sub-item modal (add + edit) ========== -->
+			<div
+				v-if="subItemModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="subItemModal = null"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-lg"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{
+								subItemModal.mode === "add"
+									? __("New sub-item · rate analysis")
+									: __("Edit sub-item")
+							}}
+						</h2>
+						<button
+							type="button"
+							@click="subItemModal = null"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+							:aria-label="__('Close')"
+						>
+							<svg
+								class="w-4 h-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								v-html="getWorkspaceIconPath('x')"
+							/>
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<DeskField
+							:label="__('From Rate Master')"
+							:hint="__('Optional · pick to auto-fill description + rate. Updates to the rate master auto-flow to BOQs that use it.')"
+						>
+							<DeskSelect
+								:model-value="subItemForm.rateMasterId"
+								@update:model-value="
+									(v) => {
+										subItemForm.rateMasterId = v || null;
+										onRateMasterPick(v);
+									}
+								"
+							>
+								<option :value="null">{{ __("— Manual entry —") }}</option>
+								<option
+									v-for="rm in rateMasterOptions"
+									:key="rm.id"
+									:value="rm.id"
+								>
+									{{ rm.code }} · {{ rm.description }} · {{ currencySymbol() }}{{
+										rm.currentRate
+									}}
+									{{ __("per") }} {{ rm.unit }}
+								</option>
+							</DeskSelect>
+						</DeskField>
+						<DeskField :label="__('Description')" required>
+							<DeskInput
+								v-model="subItemForm.description"
+								:placeholder="__('e.g. Mason (skilled), Cement OPC 53, Vibrator needle…')"
+							/>
+						</DeskField>
+						<div class="grid grid-cols-3 gap-3">
+							<DeskField
+								:label="__('Qty per unit')"
+								required
+								:hint="__('per {0}', [subItemModal.parentUnit || __('unit')])"
+							>
+								<DeskInput v-model="subItemForm.qtyPerUnit" type="number" />
+							</DeskField>
+							<DeskField :label="`${__('Rate')} (${currencySymbol()})`">
+								<DeskInput v-model="subItemForm.rate" type="number" />
+							</DeskField>
+							<DeskField :label="__('Amount')" :hint="__('qty × rate (auto)')">
+								<div class="desk-input bg-ink-50 text-right tabular-nums">
+									{{ fmtINR(subItemAmountPreview) }}
+								</div>
+							</DeskField>
+						</div>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="subItemModal = null"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button v-if="canEdit('boq')" type="button" @click="saveSubItem" class="desk-save-btn">
+							{{ subItemModal.mode === "add" ? __("Create sub-item") : __("Save changes") }}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ========== Revision modal (S134 — styled, replaces window.prompt) ========== -->
+			<div
+				v-if="revisionModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-6"
+				@click.self="closeRevisionModal"
+			>
+				<div
+					class="bg-white border border-ink-200 w-full max-w-lg shadow-fp-lg flex flex-col"
+					style="border-radius: 12px; max-height: calc(100vh - 3rem)"
+					@click.stop
+				>
+					<header
+						class="px-5 py-3 border-b border-ink-200 flex items-center justify-between"
+						style="border-radius: 12px 12px 0 0"
+					>
+						<div>
+							<h2 class="text-sm font-semibold text-ink-900">{{ __("Create new revision") }}</h2>
+							<p class="text-[11px] text-ink-500 mt-0.5">
+								{{ __("A new Draft revision is cloned from this one. Optionally reference a Scope Change Order.") }}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="text-ink-500 hover:text-ink-900 text-lg leading-none flex-shrink-0 ml-3"
+							@click="closeRevisionModal"
+						>
+							×
+						</button>
+					</header>
+					<div class="p-5 overflow-y-auto flex-1 space-y-4">
+						<DeskField
+							:label="__('Linked SCO')"
+							:hint="__('Optional reference to a Scope Change Order this revision addresses.')"
+						>
+							<DeskLinkPicker
+								v-model="revisionModal.sourceSco"
+								doctype="Scope Change Order"
+								label-field="title"
+								value-field="name"
+								:search-fields="['title', 'name']"
+								:filters="[['project', '=', boq.projectId]]"
+								order-by="creation desc"
+								:placeholder="__('Search this project\'s SCOs…')"
+							/>
+						</DeskField>
+						<DeskField
+							:label="__('Revision title')"
+							:hint="
+								revisionTitleConflict ? '' : __('Optional. Auto-generated if blank.')
+							"
+							:error="
+								revisionTitleConflict
+									? __('A revision titled “{0}” already exists on this project. Pick a different title.', [revisionModal.title.trim()])
+									: ''
+							"
+						>
+							<DeskInput
+								v-model="revisionModal.title"
+								:placeholder="__('e.g. Façade scope upgrade — R3')"
+							/>
+						</DeskField>
+					</div>
+					<footer
+						class="px-5 py-3 border-t border-ink-200 flex items-center justify-end gap-2"
+						style="border-radius: 0 0 12px 12px"
+					>
+						<button
+							type="button"
+							class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+							style="border-radius: 6px"
+							@click="closeRevisionModal"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							class="desk-save-btn"
+							:disabled="revisionTitleConflict"
+							@click="submitRevision"
+						>
+							{{ __("Create revision") }}
+						</button>
+					</footer>
+				</div>
+			</div>
+
+			<!-- ========== Import template modal ========== -->
+			<div
+				v-if="importModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="importModal = false"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">{{ __("Import from template") }}</h2>
+						<button
+							type="button"
+							@click="importModal = false"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+						>
+							✕
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<DeskField :label="__('Estimate template')" required>
+							<DeskLinkPicker
+								v-model="importForm.template"
+								doctype="Estimate Template"
+								label-field="template_name"
+								value-field="name"
+								:search-fields="['template_code', 'template_name', 'name']"
+								:placeholder="__('Pick a template')"
+							/>
+						</DeskField>
+						<p class="text-[11px] text-ink-500">
+							{{ __("Adds the template's rows to this BOQ. Assembly lines explode into sub-items.") }}
+						</p>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="importModal = false"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							@click="doImport"
+							class="desk-save-btn"
+						>
+							{{ __("Import") }}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ========== Clone modal ========== -->
+			<div
+				v-if="cloneModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="cloneModal = false"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">{{ __("Clone BOQ") }}</h2>
+						<button
+							type="button"
+							@click="cloneModal = false"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+						>
+							✕
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<DeskField
+							:label="__('To project')"
+							:hint="__('Leave blank to clone within this project (WP → WP).')"
+						>
+							<DeskLinkPicker
+								v-model="cloneForm.toProject"
+								doctype="Project"
+								label-field="project_name"
+								value-field="name"
+								:search-fields="['project_name', 'custom_project_id', 'name']"
+								:placeholder="__('— Same project —')"
+							/>
+						</DeskField>
+						<div
+							v-if="!cloneForm.toProject || cloneForm.toProject === boq.projectId"
+							class="grid grid-cols-2 gap-3"
+						>
+							<DeskField :label="__('From WP')" required>
+								<DeskLinkPicker
+									v-model="cloneForm.fromWorkPackage"
+									doctype="Work Package"
+									label-field="work_package_name"
+									value-field="name"
+									:search-fields="['work_package_name', 'code', 'name']"
+									:filters="[['project', '=', boq.projectId]]"
+									:placeholder="__('Source WP')"
+								/>
+							</DeskField>
+							<DeskField :label="__('To WP')" required>
+								<DeskLinkPicker
+									v-model="cloneForm.toWorkPackage"
+									doctype="Work Package"
+									label-field="work_package_name"
+									value-field="name"
+									:search-fields="['work_package_name', 'code', 'name']"
+									:filters="[['project', '=', boq.projectId]]"
+									:placeholder="__('Target WP')"
+								/>
+							</DeskField>
+						</div>
+						<DeskField v-else :label="__('Title')">
+							<DeskInput v-model="cloneForm.title" :placeholder="__('Cloned BOQ title')" />
+						</DeskField>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="cloneModal = false"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							v-if="canCreate('boq')"
+							type="button"
+							@click="doClone"
+							class="desk-save-btn"
+						>
+							{{ __("Clone") }}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Comments / Attachments stub footer (Frappe Desk convention) -->
+			<section class="mt-8 pt-4 border-t border-ink-200">
+				<div class="flex items-center gap-6 text-xs text-ink-500 flex-wrap">
+					<div class="flex items-center gap-1.5">
+						<svg
+							class="w-3.5 h-3.5 text-ink-500"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							v-html="getWorkspaceIconPath('message-circle')"
+						/><span>{{ __("Comments") }} — <span class="font-medium text-ink-700">0</span></span>
+						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
+					</div>
+					<div class="flex items-center gap-1.5">
+						<svg
+							class="w-3.5 h-3.5 text-ink-500"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							v-html="getWorkspaceIconPath('paperclip')"
+						/><span
+							>{{ __("Attachments") }} — <span class="font-medium text-ink-700">0</span></span
+						>
+						<span class="text-ink-400 italic ml-1">{{ __("stub") }}</span>
+					</div>
+					<div class="flex items-center gap-1.5">
+						<svg
+							class="w-3.5 h-3.5 text-ink-500"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							v-html="getWorkspaceIconPath('users')"
+						/><span>{{ __("Prepared by") }} —</span>
+						<UserAvatar :user-id="boq.preparedBy" size="xs" />
+					</div>
+				</div>
+			</section>
+		</DeskForm>
+
+		<!-- Actuals drill-down (R1) — the source documents behind a group / item Actual -->
+		<div
+			v-if="actualsDrill"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-start justify-center p-6 overflow-y-auto"
+			@click.self="closeActualsDrill"
+		>
+			<div
+				class="bg-white border border-ink-200 w-full max-w-2xl shadow-xl rounded-xl"
+				@click.stop
+			>
+				<header
+					class="px-4 py-3 border-b border-ink-200 flex items-start justify-between gap-3"
+				>
+					<div class="min-w-0">
+						<h2 class="text-sm font-semibold text-ink-900 truncate">
+							{{ actualsDrill.title }}
+						</h2>
+						<p class="text-[11px] text-ink-500">{{ actualsDrill.subtitle }}</p>
+					</div>
+					<button
+						type="button"
+						class="text-ink-400 hover:text-ink-900 flex-shrink-0"
+						@click="closeActualsDrill"
+					>
+						✕
+					</button>
+				</header>
+				<div class="px-4 py-3">
+					<div v-if="actualsDrill.loading" class="py-8 text-center text-xs text-ink-400">
+						{{ __("Loading…") }}
+					</div>
+					<div
+						v-else-if="!actualsDrill.entries.length"
+						class="py-8 text-center text-xs text-ink-400"
+					>
+						{{ __("No source documents yet — this actual is “— pending”.") }}
+					</div>
+					<table v-else class="w-full text-xs">
+						<thead
+							class="text-[10px] uppercase tracking-wider text-ink-500 border-b border-ink-200"
+						>
+							<tr>
+								<th class="text-left py-2 pr-2">{{ __("Type") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Source document") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Party") }}</th>
+								<th class="text-left py-2 pr-2">{{ __("Date") }}</th>
+								<th class="text-right py-2">{{ __("Amount") }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="(e, i) in actualsDrill.entries"
+								:key="i"
+								class="border-b border-ink-100 last:border-0"
+							>
+								<td class="py-2 pr-2">
+									<span
+										class="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
+										:class="
+											COST_TYPE_TONE[e.cost_type] ||
+											'bg-ink-100 text-ink-700'
+										"
+										>{{ __(e.cost_type) }}</span
+									>
+								</td>
+								<td class="py-2 pr-2">
+									<button
+										type="button"
+										class="text-brand-700 hover:underline text-left"
+										@click="openActualSource(e)"
+									>
+										{{ e.source_doctype }} ·
+										<span class="font-mono">{{ e.source_name }}</span>
+									</button>
+									<div v-if="e.label" class="text-[10px] text-ink-400 truncate">
+										{{ e.label }}
+									</div>
+								</td>
+								<td class="py-2 pr-2 text-ink-600">{{ e.party || "—" }}</td>
+								<td class="py-2 pr-2 text-ink-500 whitespace-nowrap">
+									{{ e.date ? fmtDate(e.date) : "—" }}
+								</td>
+								<td class="py-2 text-right tabular-nums text-ink-900 font-medium">
+									{{ fmtINR(e.amount) }}
+								</td>
+							</tr>
+						</tbody>
+						<tfoot>
+							<tr class="border-t-2 border-ink-200">
+								<td
+									colspan="4"
+									class="py-2 text-right text-[11px] font-semibold text-ink-700 uppercase tracking-wider"
+								>
+									{{ __("Total actual") }}
+								</td>
+								<td
+									class="py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+								>
+									{{ fmtINR(actualsDrill.total) }}
+								</td>
+							</tr>
+						</tfoot>
+					</table>
+					<p class="text-[10px] text-ink-400 mt-3">
+						{{ __("Every rail resolves through the cost code. Cancelling a source removes its entry — the log shows live cost only.") }}
+					</p>
+				</div>
+			</div>
+		</div>
+	</DeskPage>
+</template>

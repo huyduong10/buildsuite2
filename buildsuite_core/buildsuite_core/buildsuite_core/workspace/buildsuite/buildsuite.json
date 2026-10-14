@@ -1,0 +1,36 @@
+{
+ "app": "buildsuite_core`",
+ "charts": [],
+ "content": "[{\"id\":\"7LVy0pHLD1\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Site Execution Workspace\",\"col\":12}}]",
+ "creation": "2026-05-20 00:00:00",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Site Execution Workspace",
+   "label": "Site Execution Workspace"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "dollar-sign",
+ "idx": 5,
+ "is_hidden": 0,
+ "label": "BuildSuite",
+ "links": [],
+ "modified": "2026-05-28 13:50:36.314949",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "BuildSuite",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 18.0,
+ "shortcuts": [],
+ "title": "BuildSuite",
+ "type": "Workspace"
+}

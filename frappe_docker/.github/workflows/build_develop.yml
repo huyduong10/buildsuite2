@@ -1,0 +1,13 @@
+name: Legacy / Build Develop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  delegate:
+    uses: ./.github/workflows/core-build-develop.yml
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    secrets: inherit

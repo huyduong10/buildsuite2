@@ -1,0 +1,8 @@
+FROM frappe/erpnext:v16.50.0
+
+# Build with context = ../buildsuite_core (frontend must already be built into buildsuite_core/public/frontend)
+COPY --chown=frappe:frappe . /home/frappe/frappe-bench/apps/buildsuite_core
+
+WORKDIR /home/frappe/frappe-bench
+RUN uv pip install --python env/bin/python -e apps/buildsuite_core || env/bin/pip install -e apps/buildsuite_core
+

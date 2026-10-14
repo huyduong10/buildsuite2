@@ -1,0 +1,496 @@
+<script setup>
+import { computed, ref, watch } from "vue";
+import { watchDebounced } from "@vueuse/core";
+import Autocomplete from "../../../node_modules/frappe-ui/src/components/Autocomplete/Autocomplete.vue";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import { companyFilterForDoctype } from "@/composables/useActiveCompany";
+import { useHiddenUsers } from "@/composables/useHiddenUsers";
+import { __ } from "@/utils/translate";
+
+// Users that BuildSuite Core's own UI must never surface (Administrator, Guest,
+// platform System-Manager admins). Applied to every User picker centrally.
+const { hiddenUsers } = useHiddenUsers();
+
+const props = defineProps({
+	doctype: { type: String, required: true },
+	modelValue: { type: [String, Number, null], default: "" },
+	label: { type: String, default: "" },
+	placeholder: { type: String, default: "Select" },
+	disabled: { type: Boolean, default: false },
+	filters: { type: [Array, Object, String], default: () => [] },
+	labelField: { type: String, default: "name" },
+	valueField: { type: String, default: "name" },
+	searchFields: { type: Array, default: () => [] },
+	pageLength: { type: Number, default: 10 },
+	maxOptions: { type: Number, default: 10 },
+	orderBy: { type: String, default: "" },
+	placement: { type: String, default: "bottom-start" },
+	size: { type: String, default: "sm" },
+	error: { type: String, default: "" },
+	dataTest: { type: String, default: "" }, // stable test hook on the trigger button
+	// Opt-in inline "create new" affordance: when set, the dropdown gains a footer row that emits
+	// `create` with the current search text, so the parent can open its own create modal (e.g. the
+	// Item form on a PO / MR line). Off by default, so every existing picker is unchanged.
+	allowCreate: { type: Boolean, default: false },
+	createLabel: { type: String, default: "record" },
+});
+
+const emit = defineEmits(["update:modelValue", "change", "create"]);
+
+const query = ref("");
+
+const resolvedSearchFields = computed(() => {
+	const fields = props.searchFields.length
+		? props.searchFields
+		: [props.labelField, props.valueField, "name"];
+	return Array.from(new Set(fields.filter(Boolean)));
+});
+
+const filterFieldNames = computed(() => {
+	const filters = props.filters;
+	if (!filters) return [];
+
+	if (!Array.isArray(filters) && typeof filters === "object") {
+		return Object.keys(filters);
+	}
+
+	if (!Array.isArray(filters)) return [];
+
+	return filters.map((f) => (Array.isArray(f) ? f[0] : null)).filter(Boolean);
+});
+
+const resolvedFields = computed(() => {
+	return Array.from(
+		new Set([
+			props.valueField,
+			props.labelField,
+			...resolvedSearchFields.value,
+			...filterFieldNames.value,
+		]),
+	);
+});
+
+// Reactive company filter for this picker's doctype (empty for org-wide doctypes). Drives the
+// auto company-scope below and re-queries when the topbar switcher changes the company.
+const companyScope = companyFilterForDoctype(props.doctype);
+
+const serverFilters = computed(() => {
+	const usesArrayFilters = Array.isArray(props.filters) || !props.filters;
+
+	// For the User doctype, exclude the accounts BuildSuite Core hides from its own pickers
+	// (Administrator, Guest, platform admins). Only the array filter form is rewritten.
+	if (props.doctype === "User" && hiddenUsers.value.length && usesArrayFilters) {
+		return [...(props.filters || []), ["name", "not in", hiddenUsers.value]];
+	}
+
+	// Auto company-scope: limit a company-partitioned doctype's options to the working company,
+	// unless the caller already filters by company. Array filter form only (object/string pass
+	// through untouched); this keeps every company-scoped picker consistent in one place.
+	if (usesArrayFilters && companyScope.value.length) {
+		const arr = Array.isArray(props.filters) ? props.filters : [];
+		// Don't layer the active-company clause on top of a filter that already pins the company.
+		// An explicit `company` filter obviously does; a `project` filter does too — a project
+		// belongs to exactly one company, so its records are already single-company. Appending
+		// ["company","=",<active>] on a project-scoped picker (e.g. the BOQ's SCO / Work Package
+		// pickers) would return NOTHING whenever the active company differs from that project's
+		// company — the exact opposite of the project-company scoping we want.
+		const alreadyScoped = arr.some(
+			(f) => Array.isArray(f) && (f[0] === "company" || f[0] === "project")
+		);
+		if (!alreadyScoped) {
+			return [...arr, ...companyScope.value];
+		}
+	}
+
+	return props.filters;
+});
+
+function matchesFilterValue(actual, operator, expected) {
+	if (operator === "=") {
+		if (actual === expected) return true;
+		if (actual == null || expected == null) return false;
+
+		// Frappe list responses often mix numeric-like strings and numbers
+		// (e.g. is_group as "1" vs filter value 1). Normalize before compare.
+		const actualText = String(actual).trim();
+		const expectedText = String(expected).trim();
+		if (actualText === expectedText) return true;
+
+		const actualNum = Number(actualText);
+		const expectedNum = Number(expectedText);
+		if (!Number.isNaN(actualNum) && !Number.isNaN(expectedNum)) {
+			return actualNum === expectedNum;
+		}
+
+		return false;
+	}
+	if (operator === "like") {
+		const needle = String(expected || "")
+			.replaceAll("%", "")
+			.toLowerCase();
+		return String(actual || "")
+			.toLowerCase()
+			.includes(needle);
+	}
+	if (operator === "in") {
+		const candidates = Array.isArray(expected) ? expected : [];
+		return candidates.some((candidate) => matchesFilterValue(actual, "=", candidate));
+	}
+	return true;
+}
+
+function applyClientFilters(rows, filters = []) {
+	if (!filters || (Array.isArray(filters) && !filters.length)) return rows;
+
+	// A filter on a field the row didn't fetch can't be verified here — and the server already
+	// applied every serverFilter to the query, so the rows are correct. Skip such a clause rather
+	// than drop the row: otherwise a company-scoped picker (filtered by `company`, but fetching
+	// only name + the label field) would client-filter every row out and show "No results".
+	const fetched = (row, fieldname) => row && Object.prototype.hasOwnProperty.call(row, fieldname);
+
+	if (!Array.isArray(filters) && typeof filters === "object") {
+		return rows.filter((row) => {
+			return Object.entries(filters).every(([fieldname, condition]) => {
+				if (!fetched(row, fieldname)) return true;
+				const actual = row[fieldname];
+				if (Array.isArray(condition)) {
+					const [operator = "=", expected] = condition;
+					return matchesFilterValue(actual, operator, expected);
+				}
+				return actual === condition;
+			});
+		});
+	}
+
+	return rows.filter((row) => {
+		return filters.every((f) => {
+			const [fieldname, operator = "=", value] = f || [];
+			if (!fetched(row, fieldname)) return true;
+			return matchesFilterValue(row[fieldname], operator, value);
+		});
+	});
+}
+
+const serverOrFilters = computed(() => {
+	const term = query.value.trim();
+	if (!term) return [];
+
+	return resolvedSearchFields.value.map((fieldname) => [fieldname, "like", `%${term}%`]);
+});
+
+const listOrderBy = computed(() => props.orderBy || `${props.labelField} asc`);
+
+const optionsResource = useDocTypeList(props.doctype, {
+	fields: resolvedFields.value,
+	filters: serverFilters.value,
+	orFilters: serverOrFilters.value,
+	orderBy: listOrderBy.value,
+	pageLength: props.pageLength,
+	auto: false,
+});
+
+const selectedResource = useDocTypeList(props.doctype, {
+	fields: resolvedFields.value,
+	filters: [[props.valueField, "=", props.modelValue]],
+	orderBy: listOrderBy.value,
+	pageLength: 1,
+	auto: false,
+});
+
+const selectedRecord = computed(() => selectedResource.data?.[0] || null);
+
+const selectedOption = computed(() => {
+	const record = selectedRecord.value;
+	if (record) {
+		return buildOption(record);
+	}
+
+	const currentValue = props.modelValue;
+	if (currentValue === "" || currentValue == null) return null;
+	return {
+		label: String(currentValue),
+		value: currentValue,
+	};
+});
+
+const options = computed(() => {
+	let rows = applyClientFilters(optionsResource.data || [], serverFilters.value);
+	// Belt-and-braces: never render a hidden user even if the server page included
+	// one ("not in" is applied server-side, but this guarantees it in the UI).
+	if (props.doctype === "User" && hiddenUsers.value.length) {
+		const hidden = new Set(hiddenUsers.value);
+		rows = rows.filter((row) => !hidden.has(row?.name));
+	}
+	return rows.map(buildOption);
+});
+
+const loading = computed(() => optionsResource.loading || selectedResource.loading);
+
+watchDebounced(
+	query,
+	() => {
+		optionsResource.update({
+			fields: resolvedFields.value,
+			filters: serverFilters.value,
+			orFilters: serverOrFilters.value,
+			orderBy: listOrderBy.value,
+			pageLength: props.pageLength,
+			start: 0,
+		});
+		optionsResource.list.fetch();
+	},
+	{ debounce: 250, immediate: true },
+);
+
+watch(
+	() => props.doctype,
+	() => {
+		query.value = "";
+		optionsResource.update({
+			fields: resolvedFields.value,
+			filters: serverFilters.value,
+			orFilters: [],
+			orderBy: listOrderBy.value,
+			pageLength: props.pageLength,
+			start: 0,
+		});
+		optionsResource.list.fetch();
+		fetchSelectedRecord();
+	},
+);
+
+// Watch the RESOLVED serverFilters (not just props.filters) so the picker also re-queries when
+// the topbar switcher changes the working company (which alters serverFilters internally).
+watch(
+	serverFilters,
+	() => {
+		optionsResource.update({
+			fields: resolvedFields.value,
+			filters: serverFilters.value,
+			orFilters: serverOrFilters.value,
+			orderBy: listOrderBy.value,
+			pageLength: props.pageLength,
+			start: 0,
+		});
+		optionsResource.list.fetch();
+	},
+	{ deep: true },
+);
+
+watch(
+	() => props.modelValue,
+	() => {
+		fetchSelectedRecord();
+	},
+	{ immediate: true },
+);
+
+function fetchSelectedRecord() {
+	if (props.modelValue === "" || props.modelValue == null) {
+		selectedResource.setData([]);
+		return;
+	}
+
+	selectedResource.update({
+		fields: resolvedFields.value,
+		filters: [[props.valueField, "=", props.modelValue]],
+		orderBy: listOrderBy.value,
+		pageLength: 1,
+		start: 0,
+	});
+	selectedResource.list.fetch();
+}
+
+function buildOption(record) {
+	const label = record?.[props.labelField] ?? record?.[props.valueField] ?? "";
+	const value = record?.[props.valueField];
+	return {
+		label: label == null ? "" : String(label),
+		value,
+		description: record?.description || record?.abbr || "",
+		record,
+	};
+}
+
+function onChange(option) {
+	const nextValue = option?.value ?? "";
+	emit("update:modelValue", nextValue);
+	emit("change", nextValue);
+}
+
+function onQueryUpdate(value) {
+	query.value = value || "";
+}
+
+// Emit the typed search text so the parent can seed its create modal, then close the dropdown.
+function onCreate(togglePopover) {
+	emit("create", query.value.trim());
+	if (typeof togglePopover === "function") togglePopover();
+}
+</script>
+
+<template>
+	<div class="space-y-1.5 min-w-0">
+		<label v-if="label" class="block text-[11px] font-medium text-ink-700">
+			{{ label }}
+		</label>
+
+		<Autocomplete
+			class="desk-link-picker"
+			:model-value="selectedOption"
+			:options="options"
+			:loading="loading"
+			:max-options="maxOptions"
+			:placement="placement"
+			:hide-search="false"
+			:body-classes="'desk-link-picker-popover !bg-white border border-ink-200 shadow-lg z-[80]'"
+			:compare-fn="(a, b) => a?.value === b?.value"
+			@change="onChange"
+			@update:query="onQueryUpdate"
+		>
+			<template #target="{ togglePopover, isOpen }">
+				<button
+					type="button"
+					:data-test="dataTest || undefined"
+					class="flex h-7 w-full items-center justify-between gap-2 border bg-white px-2 text-left text-sm text-ink-700 transition-colors hover:bg-ink-50"
+					style="border-radius: 6px"
+					:class="{
+						'border-ink-200': !error && !isOpen,
+						'ring-2 ring-brand-100 border-brand-300': isOpen && !error,
+						'border-danger-500 ring-2 ring-danger-100': error,
+						'opacity-60 cursor-not-allowed': disabled,
+					}"
+					:disabled="disabled"
+					@click="togglePopover"
+				>
+					<span class="min-w-0 flex-1 truncate">
+						{{ selectedOption?.label || placeholder }}
+					</span>
+					<span class="text-[10px] text-ink-400">▾</span>
+				</button>
+			</template>
+
+			<!-- Inline "create new" row: only when allow-create is set. Reuses the parent's create
+			     modal via the `create` event; prefills it with whatever was typed. -->
+			<template v-if="allowCreate" #footer="{ togglePopover }">
+				<button
+					type="button"
+					class="desk-link-picker-create flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left font-medium text-brand-700 hover:bg-brand-50"
+					@click="onCreate(togglePopover)"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="h-3.5 w-3.5 shrink-0"
+						aria-hidden="true"
+					>
+						<line x1="12" y1="5" x2="12" y2="19" />
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+					<span class="truncate">
+						{{ query.trim() ? __("Create “{0}”", [query.trim()]) : __("New {0}", [__(createLabel)]) }}
+					</span>
+				</button>
+			</template>
+		</Autocomplete>
+	</div>
+</template>
+
+<style>
+/* Reka popover renders through a portal wrapper; this wrapper must sit above
+   modal overlays, otherwise the list appears to not open inside modals. */
+[data-radix-popper-content-wrapper]:has(.desk-link-picker-popover),
+.PopoverContent:has(.desk-link-picker-popover) {
+	z-index: 80 !important;
+}
+
+.desk-link-picker-popover {
+	background-color: #ffffff !important;
+	opacity: 1 !important;
+	z-index: 80 !important;
+	border: 1px solid theme("colors.ink.200") !important;
+	border-radius: 6px !important;
+	box-shadow:
+		0 4px 6px -1px rgba(0, 0, 0, 0.1),
+		0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Force compact typography inside teleported popover */
+.desk-link-picker-popover,
+.desk-link-picker-popover * {
+	font-size: 0.75rem !important;
+	line-height: 1rem !important;
+}
+
+/* Tighter padding for list items to feel more like Desk */
+.desk-link-picker-popover li {
+	padding-top: 4px !important;
+	padding-bottom: 4px !important;
+	padding-left: 8px !important;
+	padding-right: 8px !important;
+}
+
+/* Ensure the description/abbr is also small */
+.desk-link-picker-popover li .text-sm {
+	font-size: 0.6875rem !important;
+}
+
+/* Style the search input to match DeskInput */
+.desk-link-picker-popover input.form-input {
+	border-radius: 4px !important;
+	border: 1px solid theme("colors.ink.200") !important;
+	height: 24px !important;
+	padding: 2px 8px !important;
+	padding-right: 24px !important; /* space for x button */
+}
+
+.desk-link-picker-popover input.form-input:focus {
+	border-color: #16a34a !important;
+	box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2) !important;
+}
+
+/* Fix the 'x' button alignment in the search bar */
+.desk-link-picker-popover .relative.w-full > .absolute {
+	top: 50% !important;
+	transform: translateY(-50%) !important;
+	right: 0px !important;
+	height: 24px !important;
+	width: 24px !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+}
+
+.desk-link-picker-popover .relative.w-full > .absolute button {
+	height: 100% !important;
+	width: 100% !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+}
+
+.desk-link-picker-popover .relative.w-full > .absolute svg {
+	width: 12px !important;
+	height: 12px !important;
+}
+
+/* Hide groups if they are empty or styled weirdly */
+.desk-link-picker-popover .truncate.bg-surface-modal {
+	font-size: 11px !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.025em !important;
+	color: theme("colors.ink.400") !important;
+	padding-top: 8px !important;
+}
+
+.desk-link-picker-popover .sticky.bg-surface-modal {
+	background-color: #ffffff !important;
+}
+html.dark .desk-link-picker-popover .sticky.bg-surface-modal {
+	background-color: #242424 !important;
+}
+</style>

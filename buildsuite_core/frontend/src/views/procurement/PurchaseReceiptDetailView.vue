@@ -1,0 +1,319 @@
+<script setup>
+// Purchase Receipt detail — summary strip, read-only received lines, and the native
+// submittable lifecycle: Draft → Edit / Submit / Delete; Submitted → Cancel;
+// Cancelled → Amend / Delete. Submitting posts stock; cancelling reverses it.
+import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useConfirm } from "@/composables/useConfirm";
+import { showToast } from "@/utils/appToast";
+import {
+	getPurchaseReceipt,
+	submitPurchaseReceipt,
+	cancelPurchaseReceipt,
+	amendPurchaseReceipt,
+	deletePurchaseReceipt,
+} from "@/data/procurementApi";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
+import { usePermissions } from "@/composables/usePermissions";
+import { useWorkflow } from "@/composables/useWorkflow";
+import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const props = defineProps({ id: String });
+const router = useRouter();
+const confirmDialog = useConfirm();
+const { canEdit, canSubmit, canCreate, canDelete } = usePermissions();
+
+// Defer to an active Frappe Workflow on Purchase Receipt when one is configured — the
+// transition that submits still runs the doc's on_submit, so PR submit side effects are
+// preserved. With no workflow configured, the plain Submit / Cancel lifecycle shows.
+const {
+	active: wfActive,
+	state: wfState,
+	transitions: wfTransitions,
+	refresh: refreshWorkflow,
+	applyAction: applyWorkflowAction,
+} = useWorkflow("Purchase Receipt");
+
+const pr = ref(null);
+const loading = ref(true);
+const busy = ref(false);
+
+async function load() {
+	loading.value = true;
+	try {
+		pr.value = await getPurchaseReceipt(props.id);
+		await refreshWorkflow(props.id);
+	} catch (err) {
+		showToast(err.message || __("Failed to load receipt"), "error");
+	} finally {
+		loading.value = false;
+	}
+}
+watch(() => props.id, load, { immediate: true });
+
+const isDraft = computed(() => pr.value?.state === "Draft");
+const isSubmitted = computed(() => pr.value?.state === "Submitted");
+const isCancelled = computed(() => pr.value?.state === "Cancelled");
+const total = computed(() =>
+	(pr.value?.items || []).reduce((a, it) => a + (it.received_qty || 0) * (it.rate || 0), 0)
+);
+
+function onEdit() {
+	router.push(`/procurement/receipts/${pr.value.name}/edit`);
+}
+
+async function onSubmit() {
+	const ok = await confirmDialog({
+		title: __("Submit {0}?", [pr.value.name]),
+		message: __(
+			"Submitting posts the goods into stock and updates the purchase order's received quantity."
+		),
+		confirmLabel: __("Submit"),
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		pr.value = await submitPurchaseReceipt(pr.value.name);
+		showToast(__("Receipt submitted."));
+	} catch (err) {
+		showToast(err.message || __("Submit failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onCancel() {
+	const ok = await confirmDialog({
+		title: __("Cancel {0}?", [pr.value.name]),
+		message: __(
+			"Cancelling reverses the receipt — the material leaves stock and the order's received quantity drops back."
+		),
+		confirmLabel: __("Cancel receipt"),
+		cancelLabel: __("Keep"),
+		destructive: true,
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		pr.value = await cancelPurchaseReceipt(pr.value.name);
+		showToast(__("Receipt cancelled."));
+	} catch (err) {
+		showToast(err.message || __("Cancel failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+// Workflow-driven transition (only rendered when an active workflow governs Purchase Receipt).
+// The transition that submits the doc runs on_submit, so any PR submit-time logic still fires.
+async function onWorkflowAction(action) {
+	busy.value = true;
+	try {
+		await applyWorkflowAction(pr.value.name, action);
+		await load();
+		showToast(__("{0} done.", [action]));
+	} catch (err) {
+		showToast(err.message || __("Action failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onAmend() {
+	busy.value = true;
+	try {
+		const res = await amendPurchaseReceipt(pr.value.name);
+		showToast(__("Amended — a fresh draft was created."));
+		router.push(`/procurement/receipts/${res.name}`);
+	} catch (err) {
+		showToast(err.message || __("Amend failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onDelete() {
+	const ok = await confirmDialog({
+		title: __("Delete {0}?", [pr.value.name]),
+		message: __("This receipt will be removed permanently."),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await deletePurchaseReceipt(pr.value.name);
+		router.push("/procurement/receipts");
+	} catch (err) {
+		showToast(err.message || __("Failed to delete receipt"), "error");
+	}
+}
+
+const breadcrumbs = computed(() => [
+	{ label: "BuildSuite Core", to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Receipts"), to: "/procurement/receipts" },
+	{ label: pr.value?.name || props.id },
+]);
+</script>
+
+<template>
+	<DeskPage
+		v-if="pr"
+		:title="pr.name"
+		:subtitle="`${pr.supplier_name || pr.supplier} · ${pr.project_name || pr.project}`"
+		:breadcrumbs="breadcrumbs"
+	>
+		<template #actions>
+			<ProcurementStatusPill :status="pr.status" class="self-center mr-1" />
+			<span
+				v-if="wfActive && wfState && wfState !== pr.status"
+				class="self-center mr-1 text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
+				>{{ __(wfState) }}</span
+			>
+			<button
+				v-if="isDraft && canEdit('purchaseReceipt')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				@click="onEdit"
+			>
+				{{ __("Edit") }}
+			</button>
+			<!-- Plain docstatus lifecycle (no workflow configured) -->
+			<button
+				v-if="!wfActive && isDraft && canSubmit('purchaseReceipt')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onSubmit"
+			>
+				{{ __("Submit") }}
+			</button>
+			<button
+				v-if="!wfActive && isSubmitted && canSubmit('purchaseReceipt')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onCancel"
+			>
+				{{ __("Cancel") }}
+			</button>
+			<!-- Workflow transitions (active workflow) — role- and state-filtered by the backend -->
+			<button
+				v-for="t in wfActive ? wfTransitions : []"
+				:key="t.action"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onWorkflowAction(t.action)"
+			>
+				{{ __(t.action) }}
+			</button>
+			<button
+				v-if="isCancelled && canCreate('purchaseReceipt')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
+				@click="onAmend"
+			>
+				{{ __("Amend") }}
+			</button>
+			<button
+				v-if="!isSubmitted && canDelete('purchaseReceipt')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px"
+				@click="onDelete"
+			>
+				{{ __("Delete") }}
+			</button>
+		</template>
+
+		<div
+			v-if="isDraft"
+			class="mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-md text-xs text-ink-600"
+		>
+			{{ __("Draft — not posted to stock yet. Submit it to record the goods into the warehouse.") }}
+		</div>
+
+		<!-- Summary strip -->
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+			<div class="bg-white border border-ink-200 rounded-lg p-3">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Supplier") }}</div>
+				<div class="text-sm text-ink-900 mt-0.5 truncate">
+					{{ pr.supplier_name || pr.supplier }}
+				</div>
+			</div>
+			<div class="bg-white border border-ink-200 rounded-lg p-3">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Project") }}</div>
+				<DeskLink :to="`/projects/${pr.project}`" class="text-sm">{{
+					pr.project_name || pr.project
+				}}</DeskLink>
+			</div>
+			<div class="bg-white border border-ink-200 rounded-lg p-3">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Received on") }}</div>
+				<div class="text-sm text-ink-900 mt-0.5">{{ fmtDate(pr.posting_date) }}</div>
+				<div v-if="pr.purchase_order" class="text-[10px] text-ink-500">
+					{{ __("against") }}
+					<DeskLink
+						:to="`/procurement/purchase-orders/${pr.purchase_order}`"
+						class="font-mono"
+						>{{ pr.purchase_order }}</DeskLink
+					>
+				</div>
+			</div>
+			<div class="bg-white border border-ink-200 rounded-lg p-3">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500">{{ __("Value received") }}</div>
+				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
+					{{ fmtINR(total) }}
+				</div>
+			</div>
+		</div>
+
+		<!-- Received lines -->
+		<section class="bg-white border border-ink-200 rounded-lg overflow-x-auto">
+			<div
+				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between"
+			>
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Items received") }}
+				</h3>
+				<span class="text-[10px] text-ink-500">{{ __("Into {0}", [pr.warehouse || "—"]) }}</span>
+			</div>
+			<table class="w-full text-xs" style="min-width: 620px">
+				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
+					<tr>
+						<th class="text-left px-3 py-2">{{ __("Item") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Received") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Amount") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="(it, i) in pr.items" :key="i" class="border-t border-ink-100">
+						<td class="px-3 py-2 text-ink-900">{{ it.item_name || it.item_code }}</td>
+						<td class="px-3 py-2 text-ink-500">{{ it.uom || "—" }}</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+							{{ fmtINR(it.rate) }}
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-success-700 font-medium">
+							{{ it.received_qty }}
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
+							{{ fmtINR((it.received_qty || 0) * (it.rate || 0)) }}
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</section>
+	</DeskPage>
+
+	<div v-else class="px-3 py-2 text-sm text-ink-500">
+		{{ loading ? __("Loading receipt…") : __("Purchase receipt not found.") }}
+	</div>
+</template>

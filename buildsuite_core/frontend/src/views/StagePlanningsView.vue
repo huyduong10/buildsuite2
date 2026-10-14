@@ -1,0 +1,287 @@
+<script setup>
+// Stage Planning list — adapter-backed DocType list shell (matches TasksView pattern).
+
+import { ref, computed } from "vue";
+import { useRouter, useRoute, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
+import StatusBadge from "@/components/StatusBadge.vue";
+import { usePermissions } from "@/composables/usePermissions";
+import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const store = useDataStore();
+const router = useRouter();
+const route = useRoute();
+const adapter = createDataAdapter(store);
+const { canCreate, canRead } = usePermissions();
+
+const projectFilter = ref("");
+// Approval-lifecycle state (Frappe workflow_state). Honors ?status= deep links.
+const workflowStateFilter = ref(route.query.status || "");
+const fromDate = ref("");
+const toDate = ref("");
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+function resourceRows(resource) {
+	const raw = resource?.data;
+	if (Array.isArray(raw)) return raw;
+	if (Array.isArray(raw?.value)) return raw.value;
+	return [];
+}
+
+const projectsResource = adapter.list("Project", {
+	fields: ["name", "project_name"],
+	orderBy: "project_name asc",
+	pageLength: 100,
+	cache: "buildsuite-stage-project-filters",
+});
+const projectRows = computed(() => resourceRows(projectsResource));
+const projectsMap = computed(() => {
+	const map = {};
+	projectRows.value.forEach((p) => {
+		map[p.name] = p.project_name || p.name;
+	});
+	return map;
+});
+
+function projectName(id) {
+	return projectsMap.value[id] || id;
+}
+
+// Status is derived from the server-maintained mean task progress (not dates):
+// 0 -> Not Started, 0 < p < 100 -> In Progress, 100 -> Completed.
+function stageStatus(row) {
+	const p = Number(row.mean_progress) || 0;
+	if (p <= 0) return "Not Started";
+	if (p >= 100) return "Completed";
+	return "In Progress";
+}
+function statusClass(s) {
+	if (s === "Completed") return "bg-success-50 text-success-700";
+	if (s === "In Progress") return "bg-info-50 text-info-700";
+	return "bg-ink-100 text-ink-600";
+}
+
+// "Completed tasks (by planned progress) / total tasks in the stage." The completed
+// figure is the progress-weighted equivalent: total × mean task progress. Both
+// task_count and completed_task_count are server-maintained aggregates on the
+// record (Frappe's list API can't return the child table to count them
+// client-side). completed_task_count is the real count of member tasks at 100%
+// — the old "mean_progress × total" estimate rounded to 0 unless the stage was
+// well past half done.
+function taskCountDisplay(row) {
+	const total = Number(row.task_count) || 0;
+	const completed = Number(row.completed_task_count) || 0;
+	return `${completed} / ${total}`;
+}
+
+const filterValues = computed(() => ({
+	project: projectFilter.value,
+	workflowState: workflowStateFilter.value,
+}));
+
+const dateBaseFilters = computed(() => {
+	const filters = [];
+	if (fromDate.value) filters.push(["planned_end", ">=", fromDate.value]);
+	if (toDate.value) filters.push(["planned_start", "<=", toDate.value]);
+	return filters;
+});
+
+const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("Stage Planning") }];
+
+function onRowClick(row) {
+	router.push(`/stage-plannings/${row.name}`);
+}
+</script>
+
+<template>
+	<DeskPage :title="__('Stage Planning')" :breadcrumbs="breadcrumbs">
+		<template #actions>
+			<RouterLink
+				v-if="canCreate('stagePlanning')"
+				to="/stage-plannings/new"
+				class="desk-save-btn"
+				>{{ __("+ New Stage") }}</RouterLink
+			>
+		</template>
+
+		<!-- PRM-014 — roles without Stage Planning access get a restricted notice. -->
+		<div
+			v-if="!canRead('stagePlanning')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			{{ __("You don't have access to Stage Planning.") }}
+		</div>
+
+		<DocTypeListView
+			v-else
+			doctype="Stage Planning"
+			:field-order="[
+				'stage_name',
+				'project',
+				'description',
+				'planned_start',
+				'planned_end',
+				'task_count',
+				'mean_progress',
+				'completed_task_count',
+				'workflow_state',
+			]"
+			:columns="[
+				{ key: 'name', label: __('ID') },
+				{ key: 'stage_name', label: __('Stage'), fields: ['stage_name', 'description'] },
+				{ key: 'project', label: __('Project') },
+				{ key: 'planned_start', label: __('Planned Start') },
+				{ key: 'planned_end', label: __('Planned End') },
+				{
+					key: 'task_count',
+					label: __('Tasks (done / total)'),
+					align: 'right',
+					fields: ['task_count', 'completed_task_count'],
+				},
+				{ key: 'workflow_state', label: __('State') },
+				{ key: '_status', label: __('Status'), fields: ['mean_progress'] },
+			]"
+			:search-fields="['stage_name', 'name', 'description']"
+			:filter-values="filterValues"
+			:filter-field-map="{ project: 'project', workflowState: 'workflow_state' }"
+			:base-filters="dateBaseFilters"
+			cache-key="buildsuite-stage-planning-list-generic"
+			row-key="name"
+			initial-order-by="planned_start asc"
+			:search-placeholder="__('Search stages, projects, descriptions…')"
+			@row-click="onRowClick"
+		>
+			<template #filter-chips>
+				<DeskLinkPicker
+					v-if="!projectFilter"
+					v-model="projectFilter"
+					class="!w-56"
+					doctype="Project"
+					label-field="project_name"
+					value-field="name"
+					:search-fields="['project_name', 'custom_project_id', 'name']"
+					:page-length="10"
+					:placeholder="__('Project: Any')"
+				/>
+				<DeskFilterChip
+					v-else
+					:label="__('Project')"
+					:value="projectName(projectFilter)"
+					@remove="projectFilter = ''"
+				/>
+
+				<!-- Approval state (workflow_state): select when empty, chip when set -->
+				<DeskSelect
+					v-if="!workflowStateFilter"
+					v-model="workflowStateFilter"
+					class="!w-44"
+				>
+					<option value="">{{ __("State: Any") }}</option>
+					<option value="Draft">{{ __("Draft") }}</option>
+					<option value="Pending Approval">{{ __("Pending Approval") }}</option>
+					<option value="Approved">{{ __("Approved") }}</option>
+					<option value="Rejected">{{ __("Rejected") }}</option>
+					<option value="Cancelled">{{ __("Cancelled") }}</option>
+				</DeskSelect>
+				<DeskFilterChip
+					v-else
+					:label="__('State')"
+					:value="workflowStateFilter"
+					@remove="workflowStateFilter = ''"
+				/>
+
+				<label class="text-[11px] text-ink-500 flex items-center gap-1">
+					{{ __("From") }}
+					<input v-model="fromDate" type="date" class="desk-input !w-36 !text-xs" />
+				</label>
+				<DeskFilterChip
+					v-if="fromDate"
+					:label="__('From')"
+					:value="fmtDate(fromDate)"
+					@remove="fromDate = ''"
+				/>
+
+				<label class="text-[11px] text-ink-500 flex items-center gap-1">
+					{{ __("To") }}
+					<input v-model="toDate" type="date" class="desk-input !w-36 !text-xs" />
+				</label>
+				<DeskFilterChip
+					v-if="toDate"
+					:label="__('To')"
+					:value="fmtDate(toDate)"
+					@remove="toDate = ''"
+				/>
+			</template>
+
+			<template #cell-name="{ row }">
+				<DeskLink
+					:to="`/stage-plannings/${row.name}`"
+					class="font-mono text-xs"
+					@click.stop
+				>
+					{{ row.name }}
+				</DeskLink>
+			</template>
+			<template #cell-stage_name="{ row }">
+				<div class="text-sm font-medium text-ink-900">
+					{{ row.stage_name || __("Untitled stage") }}
+				</div>
+				<div v-if="row.description" class="text-[11px] text-ink-500 truncate max-w-md">
+					{{ row.description }}
+				</div>
+			</template>
+			<template #cell-project="{ row }">
+				<DeskLink
+					v-if="row.project"
+					:to="`/projects/${row.project}`"
+					class="text-xs"
+					@click.stop
+					>{{ projectName(row.project) }}</DeskLink
+				>
+				<span v-else class="text-xs text-ink-500">—</span>
+			</template>
+			<template #cell-planned_start="{ row }">
+				<span class="text-xs text-ink-700">{{ fmtDate(row.planned_start) || "—" }}</span>
+			</template>
+			<template #cell-planned_end="{ row }">
+				<span class="text-xs text-ink-700">{{ fmtDate(row.planned_end) || "—" }}</span>
+			</template>
+			<template #cell-task_count="{ row }">
+				<span class="text-xs text-ink-700 tabular-nums">{{ taskCountDisplay(row) }}</span>
+			</template>
+			<template #cell-workflow_state="{ row }">
+				<StatusBadge v-if="row.workflow_state" :status="row.workflow_state" size="xs" />
+				<span v-else class="text-xs text-ink-400">—</span>
+			</template>
+			<template #cell-_status="{ row }">
+				<span
+					class="text-[10px] px-1.5 py-0.5 font-medium rounded-full"
+					:class="statusClass(stageStatus(row))"
+					>{{ __(stageStatus(row)) }}</span
+				>
+			</template>
+
+			<template #empty>
+				<div class="text-sm text-ink-500">
+					{{ __("No stages match these filters") }} ·
+					<RouterLink
+						v-if="canCreate('stagePlanning')"
+						to="/stage-plannings/new"
+						class="desk-link"
+						>{{ __("Plan a stage →") }}</RouterLink
+					>
+				</div>
+			</template>
+		</DocTypeListView>
+	</DeskPage>
+</template>

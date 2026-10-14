@@ -1,0 +1,164 @@
+<script setup>
+// Raise a Scope Change Order — Desk-styled form. Raising creates the SCO in
+// "Pending Approval"; a PM / Director then approves it, after which a BOQ revision
+// can be raised from the approved change order. Pre-fills the project from
+// ?project=… (the Project detail's "+ Raise SCO" passes it).
+
+import { reactive, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+import { useFormErrors } from "@/composables/useFormErrors";
+import { usePermissions } from "@/composables/usePermissions";
+import { createDataAdapter } from "@/data/adapters";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskForm from "@/components/desk/DeskForm.vue";
+import DeskActionBar from "@/components/desk/DeskActionBar.vue";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskTextarea from "@/components/desk/DeskTextarea.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { activeCompanyFilter } from "@/composables/useActiveCompany";
+import { currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const route = useRoute();
+const router = useRouter();
+const adapter = createDataAdapter(useDataStore());
+const { canCreate } = usePermissions();
+// Scope the Project picker to the active company; re-queries when the switcher changes.
+const companyFilter = activeCompanyFilter();
+
+const TYPES = [
+	"Design Change",
+	"Client Request",
+	"Statutory",
+	"Site Condition",
+	"Rework",
+	"Other",
+];
+
+const form = reactive({
+	project: route.query.project || "",
+	type: "Design Change",
+	title: "",
+	impact: 0,
+	recoverable: "1",
+	reason: "",
+});
+const { errors, applyServerErrors, setErrors } = useFormErrors({
+	project: "project",
+	title: "title",
+});
+const saving = ref(false);
+
+function validate() {
+	const e = {};
+	if (!form.project) e.project = __("Pick a project.");
+	if (!form.title.trim()) e.title = __("Title is required.");
+	setErrors(e);
+	return Object.keys(e).length === 0;
+}
+
+function onCancel() {
+	router.back();
+}
+
+async function onSave() {
+	if (!validate()) return;
+	saving.value = true;
+	try {
+		const res = await adapter.create("Scope Change Order", {
+			project: form.project,
+			type: form.type,
+			title: form.title.trim(),
+			impact: Number(form.impact) || 0,
+			recoverable: form.recoverable === "1" ? 1 : 0,
+			reason: form.reason,
+		});
+		router.push(`/sco/${res.name}`);
+	} catch (err) {
+		showToast(applyServerErrors(err) ?? __("Failed to raise scope change order"), "error");
+	} finally {
+		saving.value = false;
+	}
+}
+
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Scope Change Orders"), to: "/sco" },
+	{ label: __("Raise") },
+];
+</script>
+
+<template>
+	<DeskPage
+		:title="__('Raise Scope Change Order')"
+		:subtitle="__('Raising submits it for PM / Director approval')"
+		:breadcrumbs="breadcrumbs"
+	>
+		<div
+			v-if="!canCreate('sco')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			{{ __("You don't have permission to raise a scope change order.") }}
+		</div>
+		<DeskForm v-else>
+			<template #action-bar>
+				<DeskActionBar
+					:save-label="saving ? __('Raising…') : __('Raise SCO')"
+					:saving="saving"
+					@save="onSave"
+					@cancel="onCancel"
+				/>
+			</template>
+
+			<DeskSection :title="__('Change order')" :cols="2">
+				<DeskField :label="__('Project')" required :error="errors.project">
+					<DeskLinkPicker
+						v-model="form.project"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						:search-fields="['project_name', 'name']"
+						:filters="companyFilter"
+						:placeholder="__('Pick a project…')"
+					/>
+				</DeskField>
+				<DeskField :label="__('Type')">
+					<DeskSelect v-model="form.type">
+						<option v-for="t in TYPES" :key="t" :value="t">{{ __(t) }}</option>
+					</DeskSelect>
+				</DeskField>
+				<DeskField :label="__('Title')" required :error="errors.title" class="md:col-span-2">
+					<DeskInput
+						v-model="form.title"
+						:placeholder="__('e.g. Foundation depth revision — soil report')"
+					/>
+				</DeskField>
+				<DeskField
+					:label="`${__('Cost impact')} (${currencySymbol()})`"
+					:hint="__('Positive = added cost to the project; negative = a saving.')"
+				>
+					<DeskInput v-model.number="form.impact" type="number" step="1000" />
+				</DeskField>
+				<DeskField :label="__('Cost recovery')">
+					<DeskSelect v-model="form.recoverable">
+						<option value="1">{{ __("Recoverable from client") }}</option>
+						<option value="0">{{ __("Internal — absorbed by us") }}</option>
+					</DeskSelect>
+				</DeskField>
+				<DeskField :label="__('Reason / justification')" class="md:col-span-2">
+					<DeskTextarea
+						v-model="form.reason"
+						:rows="4"
+						:placeholder="__('Why is this change needed?')"
+					/>
+				</DeskField>
+			</DeskSection>
+		</DeskForm>
+	</DeskPage>
+</template>

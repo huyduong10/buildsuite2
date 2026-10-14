@@ -1,0 +1,185 @@
+<script setup>
+// Purchase Orders — ERPNext Purchase Order master, in-app list via DocTypeListView
+// (pagination / sort / search for free). Columns show readable names (supplier_name,
+// project → project_name) not ids, the prototype's status pills + received bar; row
+// click / New open the in-app detail + form.
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import ProcurementStatusPill from "@/components/procurement/ProcurementStatusPill.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
+import { useProjectNames } from "@/composables/useProjectNames";
+import { useActiveCompany, activeCompanyFilter } from "@/composables/useActiveCompany";
+import { fmtDate, fmtCompactINR } from "@/utils/format";
+import { usePermissions } from "@/composables/usePermissions";
+import { __ } from "@/utils/translate";
+
+const router = useRouter();
+const { canCreate } = usePermissions();
+const { projectName } = useProjectNames();
+const activeCompany = useActiveCompany();
+// Toggle-gated: [] when company awareness is off, so the list shows every company.
+const baseFilters = activeCompanyFilter();
+
+const FIELDS = [
+	"name",
+	"supplier_name",
+	"project",
+	"transaction_date",
+	"schedule_date",
+	"grand_total",
+	"per_received",
+	"status",
+];
+const columns = [
+	{ key: "name", label: __("PO") },
+	{ key: "supplier_name", label: __("Supplier") },
+	{ key: "project", label: __("Project") },
+	{ key: "transaction_date", label: __("Ordered") },
+	{ key: "schedule_date", label: __("Required by") },
+	{ key: "grand_total", label: __("Value"), align: "right" },
+	{ key: "per_received", label: __("Received"), align: "right" },
+	{ key: "status", label: __("Status") },
+];
+
+const statusFilter = ref("");
+const projectFilter = ref("");
+const fromDate = ref("");
+const toDate = ref("");
+const filterValues = computed(() => ({
+	status: statusFilter.value,
+	project: projectFilter.value,
+	fromDate: fromDate.value,
+	toDate: toDate.value,
+}));
+const filterFieldMap = {
+	status: "status",
+	project: "project",
+	fromDate: { field: "transaction_date", op: ">=" },
+	toDate: { field: "transaction_date", op: "<=" },
+};
+
+function openDetail(row) {
+	router.push(`/procurement/purchase-orders/${row.name}`);
+}
+function openNew() {
+	router.push("/procurement/purchase-orders/new");
+}
+
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Procurement"), to: "/procurement" },
+	{ label: __("Purchase Orders") },
+];
+</script>
+
+<template>
+	<DeskPage :title="__('Purchase Orders')" :breadcrumbs="breadcrumbs">
+		<template #actions>
+			<button
+				v-if="canCreate('purchaseOrder')"
+				type="button"
+				class="desk-save-btn !text-xs"
+				@click="openNew"
+			>
+				+ {{ __("New PO") }}
+			</button>
+		</template>
+
+		<DocTypeListView
+			v-if="activeCompany"
+			doctype="Purchase Order"
+			:field-order="FIELDS"
+			:columns="columns"
+			:search-fields="['name', 'supplier_name']"
+			:base-filters="baseFilters"
+			:filter-values="filterValues"
+			:filter-field-map="filterFieldMap"
+			cache-key="buildsuite-purchase-orders"
+			row-key="name"
+			initial-order-by="transaction_date desc"
+			:search-placeholder="__('Search PO, supplier…')"
+			:empty-message="__('No purchase orders yet.')"
+			@row-click="openDetail"
+		>
+			<template #filter-chips>
+				<DeskSelect v-model="statusFilter" class="!w-44">
+					<option value="">{{ __("Status: Any") }}</option>
+					<option value="Draft">{{ __("Draft") }}</option>
+					<option value="To Receive and Bill">{{ __("To Receive and Bill") }}</option>
+					<option value="To Bill">{{ __("To Bill") }}</option>
+					<option value="To Receive">{{ __("To Receive") }}</option>
+					<option value="Completed">{{ __("Completed") }}</option>
+					<option value="On Hold">{{ __("On Hold") }}</option>
+					<option value="Closed">{{ __("Closed") }}</option>
+					<option value="Cancelled">{{ __("Cancelled") }}</option>
+				</DeskSelect>
+				<div class="w-48">
+					<DeskLinkPicker
+						v-model="projectFilter"
+						doctype="Project"
+						label-field="project_name"
+						value-field="name"
+						:placeholder="__('All projects')"
+					/>
+				</div>
+				<input
+					v-model="fromDate"
+					type="date"
+					:title="__('From (order date)')"
+					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+				/>
+				<input
+					v-model="toDate"
+					type="date"
+					:title="__('To (order date)')"
+					class="text-xs px-2 py-1.5 border border-ink-200 rounded-md bg-white text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+				/>
+			</template>
+
+			<template #cell-name="{ row }">
+				<span class="font-mono text-[11px] text-ink-600">{{ row.name }}</span>
+			</template>
+			<template #cell-supplier_name="{ row }">
+				<span class="text-ink-900 font-medium">{{ row.supplier_name || "—" }}</span>
+			</template>
+			<template #cell-project="{ row }">
+				<span class="text-ink-700">{{ projectName(row.project) || "—" }}</span>
+			</template>
+			<template #cell-transaction_date="{ row }">
+				<span class="text-ink-500 whitespace-nowrap">{{
+					fmtDate(row.transaction_date)
+				}}</span>
+			</template>
+			<template #cell-schedule_date="{ row }">
+				<span class="text-ink-500 whitespace-nowrap">{{
+					row.schedule_date ? fmtDate(row.schedule_date) : "—"
+				}}</span>
+			</template>
+			<template #cell-grand_total="{ row }">
+				<span class="tabular-nums text-ink-700">{{ fmtCompactINR(row.grand_total) }}</span>
+			</template>
+			<template #cell-per_received="{ row }">
+				<span class="flex items-center gap-1.5 justify-end">
+					<span class="w-14 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+						<span
+							class="block h-full rounded-full"
+							:class="
+								(row.per_received || 0) >= 100 ? 'bg-success-500' : 'bg-info-500'
+							"
+							:style="{ width: Math.min(100, row.per_received || 0) + '%' }"
+						></span>
+					</span>
+					<span class="text-[11px] tabular-nums text-ink-500"
+						>{{ Math.round(row.per_received || 0) }}%</span
+					>
+				</span>
+			</template>
+			<template #cell-status="{ row }">
+				<ProcurementStatusPill :status="row.status" />
+			</template>
+		</DocTypeListView>
+	</DeskPage>
+</template>

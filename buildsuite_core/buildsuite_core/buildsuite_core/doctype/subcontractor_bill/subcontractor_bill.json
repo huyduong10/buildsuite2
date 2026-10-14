@@ -1,0 +1,363 @@
+{
+ "actions": [],
+ "autoname": "SB-.YYYY.-.#####",
+ "creation": "2026-07-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "work_order",
+  "is_direct",
+  "ra_no",
+  "subcontractor",
+  "subcontractor_name",
+  "project",
+  "column_break_hdr",
+  "date",
+  "supplier_invoice_no",
+  "supplier_invoice_date",
+  "bill_type",
+  "retention_percent",
+  "status",
+  "company",
+  "sov_section",
+  "lines",
+  "taxes_section",
+  "taxes_and_charges",
+  "tax_category",
+  "taxes",
+  "adjustments_section",
+  "apply_tds",
+  "tax_withholding_category",
+  "tds_rate",
+  "column_break_adj",
+  "additional_discount_on",
+  "additional_discount_percentage",
+  "discount_amount",
+  "advance_recovery",
+  "expense_account",
+  "totals_section",
+  "gross",
+  "taxable_value",
+  "total_taxes",
+  "grand_total",
+  "column_break_totals",
+  "tds_amount",
+  "retention_amount",
+  "invoice_value",
+  "net_payable",
+  "pi_section",
+  "purchase_invoice",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Work Order",
+   "options": "Subcontractor Work Order",
+   "depends_on": "eval:!doc.is_direct"
+  },
+  {
+   "default": "0",
+   "description": "A direct bill has no Work Order / Measurement Book — lines are free-text charges.",
+   "fieldname": "is_direct",
+   "fieldtype": "Check",
+   "label": "Direct Bill"
+  },
+  {
+   "fieldname": "ra_no",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "RA No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subcontractor",
+   "fieldtype": "Link",
+   "label": "Subcontractor",
+   "link_filters": "[[\"Supplier\",\"supplier_type\",\"=\",\"Subcontractor\"]]",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "subcontractor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Subcontractor Name",
+   "read_only": 1
+  },
+  {
+   "description": "Anchors the accounting company (the generated Purchase Invoice validates against it).",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_hdr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "description": "The subcontractor's own invoice / bill number — carries to the Purchase Invoice.",
+   "fieldname": "supplier_invoice_no",
+   "fieldtype": "Data",
+   "label": "Subcontractor Invoice No"
+  },
+  {
+   "fieldname": "supplier_invoice_date",
+   "fieldtype": "Date",
+   "label": "Subcontractor Invoice Date"
+  },
+  {
+   "default": "Normal",
+   "description": "A Final bill releases the retention held on earlier bills back into the payable.",
+   "fieldname": "bill_type",
+   "fieldtype": "Select",
+   "label": "Bill Type",
+   "options": "Normal\nFinal"
+  },
+  {
+   "fieldname": "retention_percent",
+   "fieldtype": "Percent",
+   "label": "Retention %"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nPaid\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sov_section",
+   "fieldtype": "Section Break",
+   "label": "This Period"
+  },
+  {
+   "description": "For a Work Order bill, use 'Fetch from Work Order' to derive this period's quantities from certified Measurement Books. Direct bills carry free-text charge lines.",
+   "fieldname": "lines",
+   "fieldtype": "Table",
+   "label": "Lines",
+   "options": "Subcontractor Bill Line"
+  },
+  {
+   "fieldname": "taxes_section",
+   "fieldtype": "Section Break",
+   "label": "Taxes & Charges"
+  },
+  {
+   "description": "Country-agnostic: pick any Purchase Taxes and Charges Template (GST, VAT, none). Its rows populate the tax table below; the generated Purchase Invoice posts them.",
+   "fieldname": "taxes_and_charges",
+   "fieldtype": "Link",
+   "label": "Tax Template",
+   "options": "Purchase Taxes and Charges Template"
+  },
+  {
+   "fieldname": "tax_category",
+   "fieldtype": "Link",
+   "label": "Tax Category",
+   "options": "Tax Category"
+  },
+  {
+   "fieldname": "taxes",
+   "fieldtype": "Table",
+   "label": "Taxes",
+   "options": "Subcontractor Bill Tax"
+  },
+  {
+   "fieldname": "adjustments_section",
+   "fieldtype": "Section Break",
+   "label": "Withholding, Discount & Recovery"
+  },
+  {
+   "default": "0",
+   "fieldname": "apply_tds",
+   "fieldtype": "Check",
+   "label": "Apply TDS (Withholding)"
+  },
+  {
+   "depends_on": "eval:doc.apply_tds",
+   "fieldname": "tax_withholding_category",
+   "fieldtype": "Link",
+   "label": "Withholding Category",
+   "options": "Tax Withholding Category"
+  },
+  {
+   "depends_on": "eval:doc.apply_tds",
+   "fieldname": "tds_rate",
+   "fieldtype": "Percent",
+   "label": "TDS Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_adj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Net Total",
+   "fieldname": "additional_discount_on",
+   "fieldtype": "Select",
+   "label": "Apply Discount On",
+   "options": "Net Total\nGrand Total"
+  },
+  {
+   "fieldname": "additional_discount_percentage",
+   "fieldtype": "Percent",
+   "label": "Additional Discount (%)"
+  },
+  {
+   "description": "Flat discount amount (overrides the % when set).",
+   "fieldname": "discount_amount",
+   "fieldtype": "Currency",
+   "label": "Discount Amount"
+  },
+  {
+   "fieldname": "advance_recovery",
+   "fieldtype": "Currency",
+   "label": "Advance Recovery"
+  },
+  {
+   "description": "Expense account the generated Purchase Invoice posts the cost to. Defaults from BuildSuite Core Settings.",
+   "fieldname": "expense_account",
+   "fieldtype": "Link",
+   "label": "Expense Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "gross",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Gross",
+   "read_only": 1
+  },
+  {
+   "fieldname": "taxable_value",
+   "fieldtype": "Currency",
+   "label": "Taxable Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_taxes",
+   "fieldtype": "Currency",
+   "label": "Total Taxes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tds_amount",
+   "fieldtype": "Currency",
+   "label": "TDS Withheld",
+   "read_only": 1
+  },
+  {
+   "fieldname": "retention_amount",
+   "fieldtype": "Currency",
+   "label": "Retention",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_value",
+   "fieldtype": "Currency",
+   "label": "Invoice Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "net_payable",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Net Payable",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pi_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase Invoice"
+  },
+  {
+   "description": "The Purchase Invoice generated when this bill is submitted.",
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "no_copy": 1,
+   "options": "Purchase Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Subcontractor Bill",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-07-20 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "BuildSuite Core",
+ "name": "Subcontractor Bill",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "subcontractor_name",
+ "track_changes": 1
+}

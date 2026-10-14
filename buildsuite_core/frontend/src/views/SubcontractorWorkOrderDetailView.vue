@@ -1,0 +1,613 @@
+<script setup>
+// Subcontractor Work Order detail — summary strip, read-only SOV table,
+// terms, and workflow action buttons (Submit for Approval / Approve /
+// Reject / Start / Close, whatever the approval workflow offers the
+// current user). Measurement Books + RA bills land in a later pass.
+
+import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
+import { showToast } from "@/utils/appToast";
+import { createDataAdapter } from "@/data/adapters";
+import { useDocTypeList } from "@/composables/useDocTypeList";
+import {
+	getWorkOrder,
+	submitWorkOrder,
+	cancelWorkOrder,
+	amendWorkOrder,
+	getWoMeasurements,
+} from "@/data/subcontractApi";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import StatusBadge from "@/components/StatusBadge.vue";
+import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const props = defineProps({ id: String });
+const router = useRouter();
+const confirmDialog = useConfirm();
+const { canCreate, canEdit, canDelete, canSubmit } = usePermissions();
+// These buttons create OTHER entities from the WO, so each follows that entity's create
+// rights — not the WO's. A WO-full persona that is read-only on Measurement Book / on
+// Subcontractor Bill (e.g. Director/Owner) can open + submit the WO but must not see the
+// "+ Record measurement" / "+ Bill progress" buttons.
+const canRecordMeasurement = computed(() => canCreate("measurementBook"));
+const canRaiseBill = computed(() => canCreate("subcontractorBill"));
+const adapter = createDataAdapter(useDataStore());
+
+const wo = ref(null);
+const actions = ref([]);
+const measurements = ref({ books: [], measured_by_line: {} });
+const loading = ref(true);
+const busy = ref(false);
+
+async function load() {
+	loading.value = true;
+	try {
+		const data = await getWorkOrder(props.id);
+		actions.value = data.actions || [];
+		delete data.actions;
+		wo.value = data;
+		measurements.value = await getWoMeasurements(props.id).catch(() => ({
+			books: [],
+			measured_by_line: {},
+		}));
+	} catch (err) {
+		showToast(err.message || __("Failed to load work order"), "error");
+	} finally {
+		loading.value = false;
+	}
+}
+watch(() => props.id, load, { immediate: true });
+
+const isDraft = computed(() => wo.value?.status === "Draft");
+const isSubmitted = computed(() => wo.value?.status === "Submitted");
+const isCancelled = computed(() => wo.value?.status === "Cancelled");
+const mbs = computed(() => measurements.value.books || []);
+
+// Bills raised against this WO (state derives from docstatus).
+const billsRes = useDocTypeList("Subcontractor Bill", {
+	fields: ["name", "ra_no", "date", "gross", "retention_amount", "net_payable", "docstatus"],
+	filters: [["work_order", "=", props.id]],
+	orderBy: "ra_no asc",
+	pageLength: 0,
+	cache: `buildsuite-wo-bills-${props.id}`,
+});
+const bills = computed(() =>
+	(billsRes.data || []).map((b) => ({
+		...b,
+		status: { 0: "Draft", 1: "Submitted", 2: "Cancelled" }[b.docstatus] || "Draft",
+	}))
+);
+// Billed-to-date + retention held across this WO's non-cancelled bills.
+const totalBilled = computed(() =>
+	(billsRes.data || []).reduce((a, b) => (b.docstatus === 2 ? a : a + (Number(b.gross) || 0)), 0)
+);
+const totalRetention = computed(() =>
+	(billsRes.data || []).reduce(
+		(a, b) => (b.docstatus === 2 ? a : a + (Number(b.retention_amount) || 0)),
+		0
+	)
+);
+const woPct = computed(() => {
+	const total = Number(wo.value?.total_value) || 0;
+	if (total <= 0) return 0;
+	return Math.min(100, Math.round((totalBilled.value / total) * 1000) / 10);
+});
+const measuredByLine = computed(() => measurements.value.measured_by_line || {});
+function lineMeasured(name) {
+	return Number(measuredByLine.value[name] || 0);
+}
+function onRecordMeasurement() {
+	router.push(`/measurement-books/new?work_order=${wo.value.name}`);
+}
+function onRaiseBill() {
+	router.push(`/subcontractor-bills/new?work_order=${wo.value.name}`);
+}
+
+// In-app print: routes to the Vue print view, which renders the work order as a
+// printable document and exports via the browser print dialog (Save as PDF).
+function onPrint() {
+	router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.value.name)}/print`);
+}
+
+async function onSubmit() {
+	const ok = await confirmDialog({
+		title: __("Submit {0}?", [wo.value.name]),
+		message: __(
+			"Submit this work order for {0}? It becomes committed cost and its schedule of values is locked.",
+			[fmtINR(wo.value.total_value)]
+		),
+		confirmLabel: __("Submit"),
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		const res = await submitWorkOrder(wo.value.name);
+		actions.value = res.actions || [];
+		delete res.actions;
+		wo.value = res;
+		showToast(__("Work order submitted."));
+	} catch (err) {
+		showToast(err.message || __("Submit failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onCancel() {
+	const ok = await confirmDialog({
+		title: __("Cancel {0}?", [wo.value.name]),
+		message: __(
+			"This cancels the work order. It's blocked if measurement books or bills exist against it."
+		),
+		confirmLabel: __("Cancel work order"),
+		cancelLabel: __("Keep"),
+		destructive: true,
+	});
+	if (!ok) return;
+	busy.value = true;
+	try {
+		const res = await cancelWorkOrder(wo.value.name);
+		actions.value = res.actions || [];
+		delete res.actions;
+		wo.value = res;
+		showToast(__("Work order cancelled."));
+	} catch (err) {
+		showToast(err.message || __("Cancel failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+async function onAmend() {
+	busy.value = true;
+	try {
+		const res = await amendWorkOrder(wo.value.name);
+		showToast(__("Amended — a fresh draft was created."));
+		router.push(`/subcontractor-work-orders/${encodeURIComponent(res.name)}`);
+	} catch (err) {
+		showToast(err.message || __("Amend failed"), "error");
+	} finally {
+		busy.value = false;
+	}
+}
+
+function onEdit() {
+	router.push(`/subcontractor-work-orders/${encodeURIComponent(wo.value.name)}/edit`);
+}
+
+async function onDelete() {
+	const ok = await confirmDialog({
+		title: __("Delete {0}?", [wo.value.name]),
+		message: __("This work order and its schedule of values will be removed permanently."),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await adapter.remove("Subcontractor Work Order", wo.value.name);
+		router.push("/subcontractor-work-orders");
+	} catch (err) {
+		showToast(err.message || __("Failed to delete work order"), "error");
+	}
+}
+
+const breadcrumbs = computed(() => [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Subcontract"), to: "/subcontract" },
+	{ label: __("Work Orders"), to: "/subcontractor-work-orders" },
+	{ label: wo.value?.name || props.id },
+]);
+
+const tab = ref("sov");
+const tabs = computed(() => [
+	{ id: "sov", label: __("Schedule of values") },
+	{ id: "measurements", label: __("Measurements"), count: mbs.value.length },
+	{ id: "bills", label: __("Bills"), count: bills.value.length },
+	{ id: "terms", label: __("Terms") },
+]);
+</script>
+
+<template>
+	<DeskPage
+		v-if="wo"
+		:title="wo.subcontractor_name || wo.name"
+		:subtitle="`${wo.name} · ${wo.project_name || wo.project}`"
+		:breadcrumbs="breadcrumbs"
+		:status="wo.delivery_type ? [wo.status, wo.delivery_type] : wo.status"
+	>
+		<template #actions>
+			<button
+				v-if="isDraft && canEdit('subcontractorWorkOrder')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700"
+				style="border-radius: 6px"
+				@click="onEdit"
+			>
+				{{ __("Edit") }}
+			</button>
+			<button
+				v-if="isDraft && canSubmit('subcontractorWorkOrder')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onSubmit"
+			>
+				{{ __("Submit") }}
+			</button>
+			<button
+				v-if="isSubmitted && canRecordMeasurement"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-info-200 bg-info-50 hover:bg-info-100 text-info-700 font-medium"
+				style="border-radius: 6px"
+				:title="__('Capture a site measurement (Nos × L × B × D → qty) against this WO')"
+				@click="onRecordMeasurement"
+			>
+				{{ __("+ Record measurement") }}
+			</button>
+			<button
+				v-if="isSubmitted && canRaiseBill"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium inline-flex items-center"
+				style="border-radius: 6px"
+				:title="__('Bill progress against this work order (derives this period from certified Measurement Books)')"
+				@click="onRaiseBill"
+			>
+				{{ __("+ Bill progress") }}
+			</button>
+			<button
+				v-if="isSubmitted && canSubmit('subcontractorWorkOrder')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-warning-300 bg-warning-50 hover:bg-warning-100 text-warning-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				@click="onCancel"
+			>
+				{{ __("Cancel") }}
+			</button>
+			<button
+				v-if="isCancelled && canCreate('subcontractorWorkOrder')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 font-medium"
+				style="border-radius: 6px"
+				:disabled="busy"
+				:title="__('Create a fresh editable draft copy (the original stays cancelled)')"
+				@click="onAmend"
+			>
+				{{ __("Amend") }}
+			</button>
+			<button
+				type="button"
+				class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 inline-flex items-center"
+				style="border-radius: 6px"
+				:title="__('Open the printable work order (Save as PDF from the browser print dialog)')"
+				@click="onPrint"
+			>
+				{{ __("Print / PDF") }}
+			</button>
+			<button
+				v-if="!isSubmitted && canDelete('subcontractorWorkOrder')"
+				type="button"
+				class="text-xs px-2.5 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+				style="border-radius: 6px"
+				@click="onDelete"
+			>
+				{{ __("Delete") }}
+			</button>
+		</template>
+
+		<!-- Summary strip -->
+		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Subcontractor") }}
+				</div>
+				<div class="text-sm text-ink-900 mt-0.5 truncate">
+					{{ wo.subcontractor_name || "—" }}
+				</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Project") }}
+				</div>
+				<div class="text-sm text-ink-900 mt-0.5 truncate">
+					{{ wo.project_name || wo.project }}
+				</div>
+				<div class="text-[10px] text-ink-500">{{ fmtDate(wo.date) }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Total value") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
+					{{ fmtINR(wo.total_value) }}
+				</div>
+				<div class="text-[10px] text-ink-500">{{ __("Retention {0}%", [wo.retention_percent]) }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Billed to date") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 tabular-nums mt-0.5">
+					{{ fmtINR(totalBilled) }}
+				</div>
+				<div class="text-[10px] text-ink-700">{{ woPct }}%</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Retention held") }}
+				</div>
+				<div class="text-base font-semibold text-warning-700 tabular-nums mt-0.5">
+					{{ fmtINR(totalRetention) }}
+				</div>
+				<div class="text-[10px] text-ink-500">{{ __("Withheld") }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 6px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Status") }}
+				</div>
+				<div class="mt-1"><StatusBadge :status="wo.status" /></div>
+			</div>
+		</div>
+
+		<!-- Tab strip -->
+		<div
+			class="border-b border-ink-200 mb-4 flex gap-4 text-xs overflow-x-auto overflow-y-hidden"
+		>
+			<button
+				v-for="t in tabs"
+				:key="t.id"
+				type="button"
+				class="pb-2 -mb-px border-b-2 transition-colors whitespace-nowrap"
+				:class="
+					tab === t.id
+						? 'border-brand-600 text-brand-700 font-medium'
+						: 'border-transparent text-ink-500 hover:text-ink-800'
+				"
+				@click="tab = t.id"
+			>
+				{{ t.label
+				}}<span v-if="t.count != null" class="ml-1 text-ink-400">({{ t.count }})</span>
+			</button>
+		</div>
+
+		<!-- Schedule of values (read-only) -->
+		<section
+			v-if="tab === 'sov'"
+			class="bg-white border border-ink-200 rounded-lg overflow-x-auto"
+		>
+			<div
+				class="bg-ink-50 px-4 py-2 border-b border-ink-200 flex items-center justify-between"
+			>
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Schedule of values") }}
+				</h3>
+				<span v-if="wo.delivery_type" class="text-[10px] text-ink-500 italic">{{
+					__(wo.delivery_type)
+				}}</span>
+			</div>
+			<table class="w-full text-xs" style="min-width: 640px">
+				<thead class="bg-white text-ink-500 uppercase tracking-wider text-[10px]">
+					<tr>
+						<th class="text-left px-3 py-2">{{ __("Scope") }}</th>
+						<th class="text-left px-3 py-2">{{ __("Cost code") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Qty") }}</th>
+						<th class="text-left px-3 py-2">{{ __("UOM") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Rate") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Line value") }}</th>
+						<th class="text-right px-3 py-2">{{ __("Measured to date") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr
+						v-for="line in wo.lines"
+						:key="line.name"
+						class="border-t border-ink-100 align-top"
+					>
+						<td class="px-3 py-2 text-ink-900">{{ line.scope }}</td>
+						<td class="px-3 py-2">
+							<span
+								v-if="line.cost_code_label"
+								class="text-[10px] font-mono px-1.5 py-0.5 rounded"
+								:class="
+									line.cost_code_type === 'Item'
+										? 'bg-brand-50 text-brand-700'
+										: 'bg-info-50 text-info-700'
+								"
+								:title="line.cost_code_label"
+								>{{ line.cost_code_label }}</span
+							>
+							<span v-else class="text-ink-300">—</span>
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+							{{ line.qty }}
+						</td>
+						<td class="px-3 py-2 text-ink-500">{{ line.uom || "—" }}</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+							{{ fmtINR(line.rate) }}
+						</td>
+						<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
+							{{ fmtINR(line.amount) }}
+						</td>
+						<td
+							class="px-3 py-2 text-right tabular-nums text-info-700 font-medium"
+							:title="
+								lineMeasured(line.name) > line.qty
+									? __('Exceeds awarded qty — flag for variation')
+									: __('Sum across certified Measurement Books for this line')
+							"
+						>
+							{{ lineMeasured(line.name).toLocaleString("en-IN") }} {{ line.uom }}
+						</td>
+					</tr>
+				</tbody>
+				<tfoot>
+					<tr class="border-t-2 border-ink-200 bg-ink-50">
+						<td
+							colspan="5"
+							class="px-3 py-2 text-right text-xs font-semibold text-ink-700 uppercase tracking-wider"
+						>
+							{{ __("WO total") }}
+						</td>
+						<td
+							class="px-3 py-2 text-right tabular-nums text-sm font-semibold text-ink-900"
+						>
+							{{ fmtINR(wo.total_value) }}
+						</td>
+						<td></td>
+					</tr>
+				</tfoot>
+			</table>
+		</section>
+
+		<!-- Measurements against this WO -->
+		<section v-if="tab === 'measurements'">
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Measurement books ({0})", [mbs.length]) }}
+				</h3>
+				<button
+					v-if="isSubmitted && canRecordMeasurement"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="onRecordMeasurement"
+				>
+					{{ __("+ Record measurement") }}
+				</button>
+			</div>
+			<div
+				v-if="mbs.length"
+				class="bg-white border border-ink-200 rounded-lg overflow-x-auto"
+			>
+				<table class="w-full text-xs" style="min-width: 520px">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">{{ __("MB") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Date") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Entries") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Measured") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Status") }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="mb in mbs"
+							:key="mb.name"
+							class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
+							@click="router.push(`/measurement-books/${mb.name}`)"
+						>
+							<td class="px-3 py-2">
+								<DeskLink :to="`/measurement-books/${mb.name}`" @click.stop>{{
+									mb.name
+								}}</DeskLink>
+							</td>
+							<td class="px-3 py-2 text-ink-500">{{ fmtDate(mb.date) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ mb.entries_count }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900">
+								{{ Number(mb.measured_total || 0).toLocaleString("en-IN") }}
+							</td>
+							<td class="px-3 py-2">
+								<StatusBadge :status="mb.status" size="xs" />
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div v-else class="text-xs text-ink-400 italic">
+				{{ __("No measurements recorded yet against this WO.") }}
+			</div>
+		</section>
+
+		<!-- Bills raised against this WO -->
+		<section v-if="tab === 'bills'">
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Bills ({0})", [bills.length]) }}
+				</h3>
+				<button
+					v-if="isSubmitted && canRaiseBill"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="onRaiseBill"
+				>
+					{{ __("+ Bill progress") }}
+				</button>
+			</div>
+			<div
+				v-if="bills.length"
+				class="bg-white border border-ink-200 rounded-lg overflow-x-auto"
+			>
+				<table class="w-full text-xs" style="min-width: 520px">
+					<thead class="bg-ink-50 text-ink-500 uppercase tracking-wider text-[10px]">
+						<tr>
+							<th class="text-left px-3 py-2">{{ __("Bill") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Date") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Gross") }}</th>
+							<th class="text-right px-3 py-2">{{ __("Net payable") }}</th>
+							<th class="text-left px-3 py-2">{{ __("Status") }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="b in bills"
+							:key="b.name"
+							class="border-t border-ink-100 hover:bg-brand-50/30 cursor-pointer"
+							@click="router.push(`/subcontractor-bills/${b.name}`)"
+						>
+							<td class="px-3 py-2">
+								<DeskLink :to="`/subcontractor-bills/${b.name}`" @click.stop
+									>{{ __("Bill {0}", [b.ra_no]) }}</DeskLink
+								>
+							</td>
+							<td class="px-3 py-2 text-ink-500">{{ fmtDate(b.date) }}</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-700">
+								{{ fmtINR(b.gross) }}
+							</td>
+							<td class="px-3 py-2 text-right tabular-nums text-ink-900 font-medium">
+								{{ fmtINR(b.net_payable) }}
+							</td>
+							<td class="px-3 py-2"><StatusBadge :status="b.status" size="xs" /></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div v-else class="text-xs text-ink-400 italic">
+				{{ __("No bills raised yet against this WO.") }}
+			</div>
+		</section>
+
+		<!-- Terms (read-only; edit via the WO form) -->
+		<section v-if="tab === 'terms'">
+			<div class="flex items-center justify-between mb-2 gap-3">
+				<h3 class="text-xs uppercase tracking-wider font-semibold text-ink-700">
+					{{ __("Terms & conditions") }}
+				</h3>
+				<button
+					v-if="isDraft && canEdit('subcontractorWorkOrder')"
+					type="button"
+					class="text-xs text-brand-700 hover:underline"
+					@click="onEdit"
+				>
+					{{ __("Edit in work order") }}
+				</button>
+			</div>
+			<div
+				v-if="wo.terms"
+				class="bg-white border border-ink-200 rounded-lg p-4 text-xs text-ink-800 whitespace-pre-line leading-relaxed"
+			>
+				{{ wo.terms }}
+			</div>
+			<div v-else class="text-xs text-ink-400 italic">
+				{{ __("No terms set. Edit the work order to import a template or type custom terms.") }}
+			</div>
+		</section>
+	</DeskPage>
+
+	<div v-else class="px-3 py-2 text-sm text-ink-500">
+		{{ loading ? __("Loading work order…") : __("Work order not found.") }}
+	</div>
+</template>

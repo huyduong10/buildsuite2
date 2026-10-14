@@ -1,0 +1,670 @@
+<script setup>
+import { computed, ref, watch, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import { listRateMasters } from "@/data/rateMasterApi";
+import { useDoctypeMeta } from "@/composables/useDoctypeMeta";
+import { useConfirm } from "@/composables/useConfirm";
+import { usePermissions } from "@/composables/usePermissions";
+import { parseFrappeError } from "@/utils/frappeError";
+import { showToast } from "@/utils/appToast";
+import { fmtINR, fmtDate, currencySymbol } from "@/utils/format";
+import { __ } from "@/utils/translate";
+import FrappeUserBadge from "@/components/FrappeUserBadge.vue";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskList from "@/components/desk/DeskList.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+
+const props = defineProps({ id: { type: String, default: "" } });
+const router = useRouter();
+const store = useDataStore();
+const adapter = createDataAdapter(store);
+const confirmDialog = useConfirm();
+const { canCreate, canEdit, canDelete } = usePermissions();
+const { selectOptions } = useDoctypeMeta("Construction Rate Master");
+
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Estimation"), to: "/estimation" },
+	{ label: __("Rate Master") },
+];
+
+// Server-side pagination: one page of rows + counts per fetch.
+const rows = ref([]);
+const totalCount = ref(0);
+const totalRates = ref(0);
+const categoryCounts = ref({});
+const loading = ref(false);
+const page = ref(1);
+const pageSize = ref(10);
+const search = ref("");
+const categoryFilter = ref("");
+
+function mapRow(r) {
+	return {
+		id: r.name,
+		code: r.rate_code,
+		description: r.rate_name,
+		category: r.category,
+		unit: r.uom,
+		currentRate: r.current_rate,
+		previousRate: r.previous_rate,
+		updatedAt: r.effective_date,
+		updatedBy: r.modified_by,
+	};
+}
+
+// reqId guards against out-of-order responses: only the latest request wins.
+// Global counts are fetched only when withCounts is set (load + after mutations).
+let reqId = 0;
+async function reload({ withCounts = false } = {}) {
+	const my = ++reqId;
+	loading.value = true;
+	try {
+		const res = await listRateMasters({
+			start: (page.value - 1) * pageSize.value,
+			page_length: pageSize.value,
+			search: search.value.trim() || undefined,
+			category: categoryFilter.value || undefined,
+			with_counts: withCounts ? 1 : undefined,
+		});
+		if (my !== reqId) return;
+		rows.value = (res.rows || []).map(mapRow);
+		totalCount.value = res.total_count || 0;
+		if (withCounts) {
+			totalRates.value = res.total || 0;
+			categoryCounts.value = res.category_counts || {};
+		}
+	} catch (err) {
+		if (my === reqId) showToast(err.message || __("Could not load rates."), "error");
+	} finally {
+		if (my === reqId) loading.value = false;
+	}
+}
+
+// Search debounced, category immediate; both reset to page 1.
+let searchTimer;
+watch(search, () => {
+	clearTimeout(searchTimer);
+	searchTimer = setTimeout(() => {
+		page.value = 1;
+		reload();
+	}, 300);
+});
+watch(categoryFilter, () => {
+	page.value = 1;
+	reload();
+});
+onMounted(() => reload({ withCounts: true }));
+
+const editing = ref(null);
+const saving = ref(false);
+const formError = ref("");
+const form = ref({ code: "", description: "", category: "", uom: "", currentRate: 0 });
+const rateRes = ref(null);
+
+const drawer = computed(() => rateRes.value?.doc || null);
+const categoryOptions = computed(() => selectOptions("category"));
+// KPI cards: global counts (whole catalog), unaffected by the filter.
+const kpis = computed(() => {
+	const c = categoryCounts.value;
+	return {
+		total: totalRates.value,
+		Material: c.Material || 0,
+		Labour: c.Labour || 0,
+		Equipment: c.Equipment || 0,
+	};
+});
+const kpiCards = computed(() => [
+	{ label: __("Total rates"), value: kpis.value.total, color: "text-ink-900" },
+	{ label: __("Materials"), value: kpis.value.Material, color: "text-blue-700" },
+	{ label: __("Labour"), value: kpis.value.Labour, color: "text-amber-700" },
+	{ label: __("Equipment"), value: kpis.value.Equipment, color: "text-violet-700" },
+]);
+const drawerHistory = computed(() => (drawer.value?.history || []).slice().reverse()); // latest first
+
+const columns = [
+	{ key: "code", label: __("Code") },
+	{ key: "description", label: __("Description") },
+	{ key: "category", label: __("Category") },
+	{ key: "unit", label: __("UOM") },
+	{ key: "currentRate", label: __("Current Rate"), align: "right" },
+	{ key: "trend", label: __("Trend"), align: "center" },
+	{ key: "updatedAt", label: __("Last Updated") },
+];
+
+// Last-change %: current vs the previous rate (denormalized on the record). Null until a rate changes.
+function trend(row) {
+	const prev = Number(row.previousRate);
+	if (!prev) return null;
+	return { pct: ((row.currentRate - prev) / prev) * 100, up: row.currentRate > prev };
+}
+
+function categoryColor(c) {
+	return (
+		{
+			Material: "bg-blue-50 text-blue-700",
+			Labour: "bg-amber-50 text-amber-700",
+			Equipment: "bg-violet-50 text-violet-700",
+		}[c] || "bg-ink-100 text-ink-600"
+	);
+}
+
+function startAdd() {
+	form.value = {
+		code: "",
+		description: "",
+		category: categoryOptions.value[0],
+		uom: "",
+		currentRate: 0,
+	};
+	formError.value = "";
+	editing.value = "new";
+}
+function cancel() {
+	editing.value = null;
+}
+
+async function save() {
+	formError.value = "";
+	if (editing.value === "new" && !form.value.code.trim()) {
+		formError.value = __("Code is required.");
+		return;
+	}
+	if (!form.value.description.trim()) {
+		formError.value = __("Resource name is required.");
+		return;
+	}
+	if (!form.value.uom) {
+		formError.value = __("UOM is required.");
+		return;
+	}
+	if (Number(form.value.currentRate) < 0) {
+		formError.value = __("Current rate cannot be negative.");
+		return;
+	}
+	saving.value = true;
+	try {
+		if (editing.value === "new") {
+			await adapter.create("Construction Rate Master", {
+				rate_code: form.value.code.trim(),
+				rate_name: form.value.description.trim(),
+				category: form.value.category,
+				uom: form.value.uom,
+				current_rate: Number(form.value.currentRate),
+			});
+			showToast(__("Rate created"));
+		} else {
+			await adapter.update("Construction Rate Master", editing.value.id, {
+				rate_name: form.value.description.trim(),
+				category: form.value.category,
+				uom: form.value.uom,
+				current_rate: Number(form.value.currentRate),
+			});
+			showToast(__("Rate updated"));
+			if (rateRes.value) rateRes.value.reload();
+		}
+		editing.value = null;
+		await reload({ withCounts: true });
+	} catch (err) {
+		formError.value = parseFrappeError(err).summary || __("Could not save the rate.");
+	} finally {
+		saving.value = false;
+	}
+}
+
+// Load the full doc (incl. rate_history) for the side sheet — the list payload omits child tables.
+// Open the detail drawer for a rate. Reads the record directly, so a deep link to
+// /rate-master/<code> works even before the list has loaded.
+function openRate(id) {
+	rateRes.value = adapter.read("Construction Rate Master", id, {
+		transform: (docs) =>
+			docs.map((d) => ({
+				id: d.name,
+				code: d.rate_code,
+				description: d.rate_name,
+				category: d.category,
+				unit: d.uom,
+				currentRate: d.current_rate,
+				updatedAt: d.effective_date,
+				updatedBy: d.modified_by,
+				history: (d.rate_history || []).map((h) => ({
+					id: h.name,
+					rate: h.rate,
+					effectiveFrom: h.effective_from,
+					reason: h.reason,
+					purchaseOrder: h.purchase_order,
+					changedBy: h.changed_by,
+				})),
+			})),
+	});
+}
+
+// Clicking a row navigates to the record's URL; the route watcher opens the drawer.
+function onRowClick(row) {
+	if (props.id === row.id) openRate(row.id);
+	else router.push(`/rate-master/${encodeURIComponent(row.id)}`);
+}
+
+// Drive the drawer from the route param so /rate-master/<code> deep-links work and
+// the URL reflects the open record.
+watch(
+	() => props.id,
+	(id) => {
+		if (id) openRate(id);
+		else rateRes.value = null;
+	},
+	{ immediate: true }
+);
+
+function closeDrawer() {
+	if (props.id) router.push("/rate-master");
+	else rateRes.value = null;
+}
+
+function editRate() {
+	const target = drawer.value;
+	if (!target) return;
+	form.value = {
+		code: target.code,
+		description: target.description,
+		category: target.category,
+		uom: target.unit,
+		currentRate: target.currentRate,
+	};
+	formError.value = "";
+	editing.value = target;
+}
+
+async function removeRate() {
+	const target = drawer.value;
+	if (!target) return;
+	const ok = await confirmDialog({
+		title: __("Delete rate"),
+		message: __("Delete {0}? This also removes its rate history.", [target.code]),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	try {
+		await adapter.remove("Construction Rate Master", target.id);
+		showToast(__("Rate deleted"));
+		closeDrawer();
+		await reload({ withCounts: true });
+	} catch (err) {
+		showToast(parseFrappeError(err).summary || __("Could not delete the rate."), "error");
+	}
+}
+</script>
+
+<template>
+	<DeskPage :title="__('Construction Rate Master')" :breadcrumbs="breadcrumbs">
+		<template #actions>
+			<button
+				v-if="canCreate('rateMaster')"
+				type="button"
+				class="desk-save-btn"
+				@click="startAdd"
+			>
+				{{ __("+ New rate") }}
+			</button>
+		</template>
+
+		<!-- KPI cards -->
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+			<div
+				v-for="c in kpiCards"
+				:key="c.label"
+				class="bg-white border border-ink-200 px-3 py-2"
+				style="border-radius: 2px"
+			>
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ c.label }}
+				</div>
+				<div class="text-base font-semibold mt-0.5" :class="c.color">{{ c.value }}</div>
+			</div>
+		</div>
+
+		<DeskList
+			v-model="search"
+			:rows="rows"
+			:columns="columns"
+			row-key="id"
+			:search-placeholder="__('Search code or description…')"
+			:server-paginated="true"
+			:total-rows="totalCount"
+			:current-page="page"
+			:page-size="pageSize"
+			@row-click="onRowClick"
+			@page-change="
+				(p) => {
+					if (p !== page) {
+						page = p;
+						reload();
+					}
+				}
+			"
+			@page-size-change="
+				(s) => {
+					pageSize = s;
+					page = 1;
+					reload();
+				}
+			"
+		>
+			<template #filter-chips>
+				<DeskSelect v-if="!categoryFilter" v-model="categoryFilter" class="!w-40">
+					<option value="">{{ __("Category: Any") }}</option>
+					<option v-for="c in categoryOptions" :key="c" :value="c">{{ __(c) }}</option>
+				</DeskSelect>
+				<DeskFilterChip
+					v-else
+					:label="__('Category')"
+					:value="__(categoryFilter)"
+					@remove="categoryFilter = ''"
+				/>
+			</template>
+
+			<template #cell-code="{ row }">
+				<DeskLink class="font-mono text-xs" @click.stop="onRowClick(row)">{{
+					row.code
+				}}</DeskLink>
+			</template>
+			<template #cell-description="{ row }">
+				<span class="text-ink-800 text-xs">{{ row.description }}</span>
+			</template>
+			<template #cell-category="{ row }">
+				<span
+					:class="['text-[10px] px-1.5 py-0.5 font-medium', categoryColor(row.category)]"
+					style="border-radius: 2px"
+					>{{ __(row.category) }}</span
+				>
+			</template>
+			<template #cell-unit="{ row }">
+				<span class="text-ink-600 text-xs">{{ row.unit }}</span>
+			</template>
+			<template #cell-currentRate="{ row }">
+				<span class="tabular-nums text-ink-900 font-medium">{{
+					fmtINR(row.currentRate)
+				}}</span>
+			</template>
+			<template #cell-trend="{ row }">
+				<span
+					v-if="trend(row)"
+					class="text-[11px] tabular-nums font-medium"
+					:class="trend(row).up ? 'text-danger-700' : 'text-success-700'"
+				>
+					{{ trend(row).up ? "▲" : "▼" }} {{ Math.abs(trend(row).pct).toFixed(1) }}%
+				</span>
+				<span v-else class="text-ink-300">—</span>
+			</template>
+
+			<template #cell-updatedAt="{ row }">
+				<div class="flex items-center gap-1 text-xs text-ink-500">
+					<FrappeUserBadge :user-id="row.updatedBy" :show-name="false" size="xs" />
+					<span>{{ fmtDate(row.updatedAt) }}</span>
+				</div>
+			</template>
+
+			<template #empty>
+				<div class="text-sm text-ink-500">
+					{{ loading ? __("Loading rates…") : __("No rates match your filters.") }}
+				</div>
+			</template>
+		</DeskList>
+
+		<!-- New / edit modal -->
+		<div
+			v-if="editing"
+			class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+			@click="cancel"
+		>
+			<div
+				class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-md"
+				style="border-radius: 2px"
+				@click.stop
+			>
+				<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+					<h2 class="text-sm font-semibold text-ink-900">
+						{{ editing === "new" ? __("New rate") : __("Edit rate · {0}", [editing.code]) }}
+					</h2>
+					<button
+						type="button"
+						@click="cancel"
+						class="ml-auto text-ink-400 hover:text-ink-900"
+						:aria-label="__('Close')"
+					>
+						✕
+					</button>
+				</div>
+				<div class="p-4 space-y-3">
+					<div
+						v-if="formError"
+						class="px-3 py-2 bg-danger-50 border border-danger-100 text-xs text-danger-700"
+						style="border-radius: 6px"
+					>
+						{{ formError }}
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<DeskField :label="__('Code')" required>
+							<DeskInput
+								v-model="form.code"
+								:disabled="editing !== 'new'"
+								:placeholder="__('e.g. CEM-OPC53')"
+								@input="formError = ''"
+							/>
+						</DeskField>
+						<DeskField :label="__('Category')">
+							<DeskSelect v-model="form.category">
+								<option v-for="c in categoryOptions" :key="c" :value="c">{{ __(c) }}</option>
+							</DeskSelect>
+						</DeskField>
+					</div>
+					<DeskField :label="__('Description')" required>
+						<DeskInput
+							v-model="form.description"
+							:placeholder="__('Cement — OPC 53 Grade')"
+							@input="formError = ''"
+						/>
+					</DeskField>
+					<div class="grid grid-cols-2 gap-3">
+						<DeskField :label="__('UOM')" required>
+							<DeskLinkPicker
+								v-model="form.uom"
+								doctype="UOM"
+								label-field="name"
+								value-field="name"
+								:placeholder="__('— Select UOM —')"
+								@change="formError = ''"
+							/>
+						</DeskField>
+						<DeskField :label="`${__('Current rate')} (${currencySymbol()})`" required>
+							<DeskInput
+								v-model.number="form.currentRate"
+								type="number"
+								@input="formError = ''"
+							/>
+						</DeskField>
+					</div>
+					<DeskField
+						:label="__('Source')"
+						:hint="__('Manual edits stamp \'Manual\'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.')"
+					>
+						<DeskInput :model-value="'Manual'" disabled />
+					</DeskField>
+				</div>
+				<div class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2">
+					<button
+						type="button"
+						:disabled="saving"
+						@click="cancel"
+						class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+					>
+						{{ __("Cancel") }}
+					</button>
+					<button
+						v-if="editing === 'new' ? canCreate('rateMaster') : canEdit('rateMaster')"
+						type="button"
+						:disabled="saving"
+						@click="save"
+						class="desk-save-btn"
+					>
+						{{
+							saving ? __("Saving…") : editing === "new" ? __("Create rate") : __("Save changes")
+						}}
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- History side sheet -->
+		<div
+			v-if="rateRes"
+			:class="['fixed inset-0 z-[55] flex justify-end', editing ? '' : 'bg-ink-900/40']"
+			@click="closeDrawer"
+		>
+			<div
+				class="w-96 h-full bg-white border-l border-ink-200 shadow-fp-lg flex flex-col"
+				@click.stop
+			>
+				<div
+					v-if="!drawer"
+					class="flex-1 flex items-center justify-center text-sm text-ink-500"
+				>
+					{{ __("Loading…") }}
+				</div>
+				<template v-else>
+					<div class="px-4 py-3 border-b border-ink-200">
+						<div class="flex items-center gap-2">
+							<span class="font-mono text-xs text-brand-700">{{ drawer.code }}</span>
+							<span
+								:class="[
+									'text-[10px] px-1.5 py-0.5 font-medium',
+									categoryColor(drawer.category),
+								]"
+								style="border-radius: 2px"
+								>{{ __(drawer.category) }}</span
+							>
+							<button
+								type="button"
+								@click="closeDrawer"
+								class="ml-auto text-ink-400 hover:text-ink-900"
+								:aria-label="__('Close')"
+							>
+								✕
+							</button>
+						</div>
+						<div class="text-sm text-ink-900 mt-2">{{ drawer.description }}</div>
+						<div class="flex items-baseline gap-2 mt-2">
+							<span class="text-xl font-semibold text-ink-900 tabular-nums">{{
+								fmtINR(drawer.currentRate)
+							}}</span>
+							<span class="text-xs text-ink-500">{{ __("per {0}", [drawer.unit]) }}</span>
+						</div>
+					</div>
+
+					<div class="flex-1 overflow-y-auto">
+						<div
+							class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-ink-500 font-semibold"
+						>
+							{{ __("Rate history") }}
+						</div>
+						<table class="w-full text-xs">
+							<thead>
+								<tr
+									class="bg-ink-50 border-b border-ink-200 text-[10px] uppercase tracking-wider text-ink-500"
+								>
+									<th class="px-3 py-1.5 text-right font-semibold">{{ __("Rate") }}</th>
+									<th class="px-3 py-1.5 text-left font-semibold">{{ __("Effective") }}</th>
+									<th class="px-3 py-1.5 text-left font-semibold">{{ __("Source") }}</th>
+									<th class="px-3 py-1.5"></th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="h in drawerHistory"
+									:key="h.id"
+									class="border-b border-ink-100"
+								>
+									<td
+										class="px-3 py-1.5 text-right tabular-nums text-ink-900 font-medium"
+									>
+										{{ fmtINR(h.rate) }}
+									</td>
+									<td class="px-3 py-1.5 text-ink-700">
+										{{ fmtDate(h.effectiveFrom) }}
+									</td>
+									<td class="px-3 py-1.5">
+										<DeskLink
+											v-if="h.purchaseOrder"
+											:href="`/app/purchase-order/${encodeURIComponent(
+												h.purchaseOrder
+											)}`"
+											target="_blank"
+											class="font-mono"
+										>
+											{{ h.purchaseOrder }}
+										</DeskLink>
+										<span v-else class="text-ink-600">{{ h.reason }}</span>
+									</td>
+									<td class="px-3 py-1.5 text-right">
+										<FrappeUserBadge
+											:user-id="h.changedBy"
+											:show-name="false"
+											size="xs"
+										/>
+									</td>
+								</tr>
+								<tr v-if="!drawerHistory.length">
+									<td
+										colspan="4"
+										class="px-4 py-6 text-center text-xs text-ink-400 italic"
+									>
+										{{ __("No history recorded yet.") }}
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-between gap-2"
+					>
+						<div
+							class="flex items-center gap-1.5 text-[10px] text-ink-500 min-w-0 truncate"
+						>
+							<span>{{ __("By") }}</span>
+							<FrappeUserBadge :user-id="drawer.updatedBy" size="xs" />
+							<span class="flex-shrink-0">· {{ fmtDate(drawer.updatedAt) }}</span>
+						</div>
+						<div class="flex items-center gap-2 flex-shrink-0">
+							<button
+								v-if="canDelete('rateMaster')"
+								type="button"
+								class="text-xs px-2 py-1 border border-danger-200 bg-white hover:bg-danger-50 text-danger-700"
+								style="border-radius: 6px"
+								@click="removeRate"
+							>
+								{{ __("Delete") }}
+							</button>
+							<button
+								v-if="canEdit('rateMaster')"
+								type="button"
+								class="desk-save-btn"
+								@click="editRate"
+							>
+								{{ __("Edit") }}
+							</button>
+						</div>
+					</div>
+				</template>
+			</div>
+		</div>
+	</DeskPage>
+</template>

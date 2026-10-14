@@ -1,0 +1,60 @@
+import { createListResource } from "frappe-ui-list-resource";
+import { useDataStore } from "@/stores";
+import { createLocalDataAdapter } from "@/data/adapters/localDataAdapter";
+
+/**
+ * Generic composable for a read-only Frappe DocType list.
+ *
+ * In 'remote' mode (default), it wraps createListResource so that standard
+ * Frappe permissions, user-permissions, and server-side filters are enforced.
+ * In 'local' mode (VITE_DATA_MODE=local), it uses the LocalDataAdapter which
+ * mocks list reads against the Pinia store's seed data.
+ *
+ * @param {string} doctype      Frappe DocType name, e.g. 'Project'
+ * @param {object} [options]
+ *   @param {string[]} [options.fields]      Fields to fetch (default: ['name'])
+ *   @param {Array|Object} [options.filters] Frappe-style list filters
+ *   @param {Array|Object} [options.orFilters] Frappe-style OR filters
+ *   @param {string} [options.orderBy]       e.g. 'creation desc'
+ *   @param {number} [options.start]         Start offset for server pagination
+ *   @param {number} [options.pageLength]    Page size (default: 20)
+ *   @param {string|Array} [options.cache]   frappe-ui cache key
+ *   @param {boolean} [options.auto]         Fetch immediately (default: true)
+ *   @param {function} [options.transform]   Post-process the data array
+ *
+ * @returns {import('frappe-ui').ListResource} Reactive resource
+ */
+export function useDocTypeList(doctype, options = {}) {
+	const mode = import.meta.env.VITE_DATA_MODE || "remote";
+
+	if (mode === "local") {
+		const store = useDataStore();
+		const adapter = createLocalDataAdapter(store);
+		return adapter.list(doctype, options);
+	}
+
+	// frappe-ui's listResource does `pageLength || 20`, so a caller's `pageLength: 0`
+	// (the Frappe convention for "no limit / all rows") is silently capped at 20.
+	// Translate 0 → a high cap so "0 = all" works as intended across every list that
+	// needs the full set (name→label maps, KPI totals, client-side pagination, …).
+	const ALL_ROWS = 100000;
+	const resourceConfig = {
+		doctype,
+		fields: options.fields ?? ["name"],
+		orderBy: options.orderBy,
+		start: options.start ?? 0,
+		pageLength: options.pageLength === 0 ? ALL_ROWS : (options.pageLength ?? 20),
+		auto: options.auto !== false,
+	};
+
+	if (options.filters !== undefined) resourceConfig.filters = options.filters;
+	if (options.orFilters !== undefined) resourceConfig.orFilters = options.orFilters;
+	if (options.cache !== undefined) resourceConfig.cache = options.cache;
+	if (options.transform !== undefined) resourceConfig.transform = options.transform;
+	// A caller-supplied error handler. Providing one routes list-fetch failures to the caller
+	// (which can show an error state) instead of frappe-ui's global fallbackErrorHandler, so a
+	// denied/invalid read degrades gracefully rather than surfacing as an uncaught rejection.
+	if (options.onError !== undefined) resourceConfig.onError = options.onError;
+
+	return createListResource(resourceConfig);
+}

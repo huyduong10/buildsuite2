@@ -1,0 +1,210 @@
+<script setup>
+// Labour Attendance Register — read-only. Rows are generated when a Field
+// Attendance sheet is submitted, never created by hand here. Filters (project,
+// worker, status, date range) + a total-daily-wages subtitle mirror the prototype
+// (S216). Task/Day-Type columns need source data on the register doctype.
+
+import { computed, ref, watch } from "vue";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskInput from "@/components/desk/DeskInput.vue";
+import DeskSearchableSelect from "@/components/desk/DeskSearchableSelect.vue";
+import StatusBadge from "@/components/StatusBadge.vue";
+import DocTypeListView from "@/components/doctype/DocTypeListView.vue";
+import { useProjectOptions } from "@/composables/useProjectOptions";
+import { useFieldEmployeeOptions } from "@/composables/useFieldEmployeeOptions";
+import { fmtDate, fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
+import { frappeRequest } from "frappe-ui-frappe-request";
+
+const { projectOptions, projectLabel } = useProjectOptions();
+const { workerOptions } = useFieldEmployeeOptions();
+
+const STATUSES = ["Full Day", "Half Day", "Absent"];
+
+const projectFilter = ref("");
+const workerFilter = ref("");
+const statusFilter = ref("");
+const fromFilter = ref("");
+const toFilter = ref("");
+
+const filterValues = computed(() => ({
+	project: projectFilter.value,
+	worker: workerFilter.value,
+	status: statusFilter.value,
+	from: fromFilter.value,
+	to: toFilter.value,
+}));
+// worker → the employee link; the date range targets attendance_date via op.
+const filterFieldMap = {
+	project: "project",
+	worker: "employee",
+	status: "status",
+	from: { field: "attendance_date", op: ">=" },
+	to: { field: "attendance_date", op: "<=" },
+};
+
+const anyFilter = computed(() =>
+	Object.values(filterValues.value).some((v) => v)
+);
+function clearFilters() {
+	projectFilter.value = "";
+	workerFilter.value = "";
+	statusFilter.value = "";
+	fromFilter.value = "";
+	toFilter.value = "";
+}
+
+// Total daily wages across the WHOLE filtered set (not just the visible page) —
+// a single SQL sum with the same filters, shown as the page subtitle.
+const totalWages = ref(0);
+function currentServerFilters() {
+	const f = [["docstatus", "<", 2]];
+	if (projectFilter.value) f.push(["project", "=", projectFilter.value]);
+	if (workerFilter.value) f.push(["employee", "=", workerFilter.value]);
+	if (statusFilter.value) f.push(["status", "=", statusFilter.value]);
+	if (fromFilter.value) f.push(["attendance_date", ">=", fromFilter.value]);
+	if (toFilter.value) f.push(["attendance_date", "<=", toFilter.value]);
+	return f;
+}
+async function loadTotal() {
+	try {
+		totalWages.value =
+			Number(
+				await frappeRequest({
+					url: "buildsuite_core.api.field_attendance.register_total",
+					params: {
+						doctype: "Labour Attendance Register",
+						field: "daily_wage_calculated",
+						filters: JSON.stringify(currentServerFilters()),
+					},
+				})
+			) || 0;
+	} catch {
+		totalWages.value = 0;
+	}
+}
+watch(filterValues, loadTotal, { immediate: true, deep: true });
+
+const subtitle = computed(() => __("Total daily wages {0}", [fmtINR(totalWages.value)]));
+
+const columns = [
+	{ key: "attendance_date", label: __("Date") },
+	{ key: "employee_name", label: __("Worker") },
+	{ key: "status", label: __("Status") },
+	{ key: "task", label: __("Task") },
+	{ key: "project", label: __("Project") },
+	{ key: "wage_rate", label: __("Wage rate"), align: "right" },
+	{ key: "daily_wage_calculated", label: __("Daily wage"), align: "right" },
+];
+
+const breadcrumbs = [
+	{ label: "BuildSuite Core", to: "/" },
+	{ label: __("Workforce"), to: "/workforce" },
+	{ label: __("Labour Attendance Register") },
+];
+</script>
+
+<template>
+	<DeskPage :title="__('Labour Attendance Register')" :subtitle="subtitle" :breadcrumbs="breadcrumbs">
+		<DocTypeListView
+			doctype="Labour Attendance Register"
+			:field-order="[
+				'attendance_date',
+				'employee_name',
+				'status',
+				'task',
+				'task_subject',
+				'project',
+				'wage_rate',
+				'daily_wage_calculated',
+			]"
+			:columns="columns"
+			:search-fields="['employee_name', 'name', 'project']"
+			:filter-values="filterValues"
+			:filter-field-map="filterFieldMap"
+			:base-filters="[['docstatus', '<', 2]]"
+			cache-key="buildsuite-labour-attendance"
+			row-key="name"
+			initial-order-by="attendance_date desc"
+			:search-placeholder="__('Search worker / project…')"
+			:empty-message="__('No labour attendance yet — submit a Field Attendance.')"
+		>
+			<template #filter-chips>
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+					<div class="w-48">
+						<DeskSearchableSelect
+							v-model="projectFilter"
+							:options="projectOptions"
+							:placeholder="__('All projects')"
+							:search-placeholder="__('Search projects…')"
+							allow-clear
+						/>
+					</div>
+					<div class="w-48">
+						<DeskSearchableSelect
+							v-model="workerFilter"
+							:options="workerOptions"
+							:placeholder="__('Everyone')"
+							:search-placeholder="__('Search workers…')"
+							allow-clear
+						/>
+					</div>
+					<DeskSelect v-model="statusFilter" class="!w-32">
+						<option value="">{{ __("Any status") }}</option>
+						<option v-for="s in STATUSES" :key="s" :value="s">{{ __(s) }}</option>
+					</DeskSelect>
+					<div class="flex items-center gap-1.5">
+						<DeskInput v-model="fromFilter" type="date" class="!w-36" />
+						<span class="text-[11px] text-ink-400">{{ __("to") }}</span>
+						<DeskInput v-model="toFilter" type="date" class="!w-36" />
+					</div>
+					<button
+						v-if="anyFilter"
+						type="button"
+						class="text-[11px] text-ink-500 hover:text-ink-800 px-1"
+						@click="clearFilters"
+					>
+						{{ __("Clear") }}
+					</button>
+				</div>
+			</template>
+
+			<template #cell-attendance_date="{ row }">
+				<span class="text-ink-700">{{ fmtDate(row.attendance_date) || "—" }}</span>
+			</template>
+
+			<template #cell-employee_name="{ row }">
+				<span class="text-ink-900 font-medium">{{ row.employee_name || row.employee }}</span>
+			</template>
+
+			<template #cell-status="{ row }">
+				<StatusBadge :status="row.status" />
+			</template>
+
+			<template #cell-task="{ row }">
+				<span class="text-ink-700">{{ row.task_subject || row.task || "—" }}</span>
+			</template>
+
+			<template #cell-project="{ row }">
+				<DeskLink v-if="row.project" :to="`/projects/${row.project}`" @click.stop>
+					{{ projectLabel(row.project) }}
+				</DeskLink>
+				<span v-else class="text-ink-400">—</span>
+			</template>
+
+			<template #cell-wage_rate="{ row }">
+				<span class="tabular-nums text-ink-700">
+					{{ row.wage_rate ? fmtINR(row.wage_rate) : "—" }}
+				</span>
+			</template>
+
+			<template #cell-daily_wage_calculated="{ row }">
+				<span class="tabular-nums text-ink-900 font-medium">
+					{{ row.daily_wage_calculated ? fmtINR(row.daily_wage_calculated) : "—" }}
+				</span>
+			</template>
+		</DocTypeListView>
+	</DeskPage>
+</template>

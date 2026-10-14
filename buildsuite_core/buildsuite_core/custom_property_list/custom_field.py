@@ -1,0 +1,770 @@
+CUSTOM_FIELD = {
+	# Company-scope the org-wide ERPNext masters so multi-company can isolate them: the field
+	# is `company` (matching every BuildSuite doctype) so it auto-integrates with the SPA's
+	# company-scoped lists/pickers and the cross-company guards. Stamped on insert
+	# (stamp_company_on_insert, hooks.py) and backfilled to the default company.
+	#
+	# NOTE: Supplier and Customer are intentionally NOT here. ERPNext parties are global masters
+	# (a single Supplier/Customer transacts with any company; the per-company payable/receivable
+	# account lives in the native Party Account child table). Gating them by a BuildSuite `company`
+	# field blocked reusing a supplier/customer across companies in procurement + finance, so the
+	# field was removed (see patches.drop_party_company_field). Item keeps its company field.
+	"Item": [
+		{
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"label": "Company",
+			"options": "Company",
+			"insert_after": "item_group",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Company branding — drives the shared "BuildSuite Standard" Letter Head used by every
+	# print format. The logo + subtext are edited in the SPA (Settings → Company Branding) or
+	# Desk; either write rebuilds the letter head (see hooks.py Company.on_update →
+	# rebuild_letter_head), so print formats always reflect the current branding.
+	"Company": [
+		{
+			"fieldname": "custom_branding_section",
+			"fieldtype": "Section Break",
+			"label": "BuildSuite Branding",
+			"insert_after": "company_name",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_company_logo",
+			"fieldtype": "Attach Image",
+			"label": "Company Logo",
+			"insert_after": "custom_branding_section",
+			"description": "Shown in the letter head on all print formats (PDF/print).",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_letter_head_subtext",
+			"fieldtype": "Small Text",
+			"label": "Letter Head Subtext",
+			"insert_after": "custom_company_logo",
+			"description": "Address / GSTIN / contact line shown under the company name in the letter head.",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Marks a Payment Entry as a BuildSuite on-account ADVANCE (from record_advance / linked
+	# via the bill's Advance Payments). A fully-consumed advance is otherwise indistinguishable
+	# from a plain receipt, so the classification (api.invoice / api.supplier_bill _linked_advances)
+	# reads this flag to keep advances out of the Payments/Receipts list.
+	"Payment Entry": [
+		{
+			"fieldname": "custom_is_bs_advance",
+			"fieldtype": "Check",
+			"label": "BuildSuite Advance",
+			"insert_after": "unallocated_amount",
+			"read_only": 1,
+			"hidden": 1,
+			"print_hide": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Project": [
+		{
+			"fieldname": "custom_project_id",
+			"fieldtype": "Data",
+			"label": "Project ID",
+			"reqd": 0,
+			"unique": 1,
+			"in_list_view": 1,
+			"insert_after": "project_name",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project_status",
+			"fieldtype": "Select",
+			"label": "Project Status",
+			"insert_after": "status",
+			"default": "New",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"options": "New\nOngoing\nDelayed\nCompleted",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "location",
+			"fieldtype": "Data",
+			"label": "Location",
+			"insert_after": "project_status",
+			"module": "BuildSuite Core",
+		},
+		{
+			# The assigned Project Manager (a real User). Distinct from `owner`,
+			# which Frappe forces to the creating user on insert — so PM
+			# assignment must live on its own field. Drives the PM section in the
+			# Vue project views.
+			"fieldname": "project_manager",
+			"fieldtype": "Link",
+			"label": "Project Manager",
+			"options": "User",
+			"insert_after": "project_status",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "is_group",
+			"fieldtype": "Check",
+			"label": "Is Group",
+			"default": "0",
+			"insert_after": "company",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "parent_project",
+			"fieldtype": "Link",
+			"label": "Parent Project",
+			"options": "Project",
+			"depends_on": "eval:doc.parent_project",
+			"insert_after": "is_group",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_subprojects",
+			"fieldtype": "Tab Break",
+			"label": "Subprojects",
+			"insert_after": "actual_end_date",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_subprojects_html",
+			"fieldtype": "HTML",
+			"label": "Subprojects HTML",
+			"insert_after": "custom_subprojects",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_work_packages",
+			"fieldtype": "Tab Break",
+			"label": "Work Packages",
+			"insert_after": "custom_subprojects_html",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_work_packages_html",
+			"fieldtype": "HTML",
+			"label": "Work Packages HTML",
+			"insert_after": "custom_work_packages",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_tasks",
+			"fieldtype": "Tab Break",
+			"label": "Tasks",
+			"insert_after": "custom_work_packages_html",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_tasks_html",
+			"fieldtype": "HTML",
+			"label": "Tasks HTML",
+			"insert_after": "custom_tasks",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stage_planning",
+			"fieldtype": "Tab Break",
+			"label": "Stage Planning",
+			"insert_after": "custom_tasks_html",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stage_planning_html",
+			"fieldtype": "HTML",
+			"label": "Stage Planning HTML",
+			"insert_after": "custom_stage_planning",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_team",
+			"fieldtype": "Tab Break",
+			"label": "Team",
+			"insert_after": "custom_stage_planning_html",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_team_members",
+			"fieldtype": "Table",
+			"options": "Project Team",
+			"label": "Team Members",
+			"default": "0",
+			"insert_after": "custom_team",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_scope_changes",
+			"fieldtype": "Tab Break",
+			"label": "Scope Changes",
+			"insert_after": "custom_team_members",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_seed_default_stages",
+			"fieldtype": "Check",
+			"label": "Seed Default Stages",
+			"default": "0",
+			"hidden": 1,
+			"insert_after": "project_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_seed_default_tasks",
+			"fieldtype": "Check",
+			"label": "Seed Default Tasks",
+			"default": "0",
+			"hidden": 1,
+			"insert_after": "custom_seed_default_stages",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_seed_default_work_packages",
+			"fieldtype": "Check",
+			"label": "Seed Default Work Packages",
+			"default": "0",
+			"hidden": 1,
+			"insert_after": "custom_seed_default_tasks",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"label": "Project Category",
+			"options": "Project Category",
+			"insert_after": "project_type",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			# Sparse per-project override of the Project Settings tab template: one row per tab
+			# the project explicitly Shows/Hides; absent = inherit the template. SPA-managed via
+			# the project view's "..." menu (buildsuite_core.api.project_settings).
+			"fieldname": "custom_tab_overrides",
+			"fieldtype": "Table",
+			"label": "Tab Overrides",
+			"options": "Project Tab Visibility",
+			"insert_after": "project_category",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Task": [
+		{
+			"fieldname": "work_package",
+			"fieldtype": "Link",
+			"label": "Work Package",
+			"options": "Work Package",
+			"in_list_view": 0,
+			"insert_after": "parent_task",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_task_id",
+			"fieldtype": "Data",
+			"label": "Task ID",
+			"reqd": 0,
+			"unique": 0,
+			"in_list_view": 1,
+			"insert_after": "work_package",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "task_progress_details",
+			"fieldtype": "Table",
+			"label": "Task Progress Details",
+			"options": "Task Progress Details",
+			"insert_after": "description",
+			"module": "BuildSuite Core",
+			"read_only": 1,
+		},
+		{
+			"fieldname": "task_status",
+			"fieldtype": "Select",
+			"insert_after": "status",
+			"label": "Task Status",
+			"in_list_view": 0,
+			"in_standard_filter": 1,
+			"default": "Yet To Start",
+			"options": "Yet To Start\nIn Progress\nIn Delay\nCompleted\nBlocked",
+		},
+		{
+			# Scheduling type now lives on the native `type` Link (-> Task Type master),
+			# so admins can add types from the backend. The custom Select is removed; the
+			# migration patch copies task_type -> type before this field's column is dropped.
+			"fieldname": "schedule_conflict",
+			"fieldtype": "Check",
+			"insert_after": "exp_end_date",
+			"label": "Schedule Conflict",
+			"in_list_view": 0,
+			"in_standard_filter": 1,
+			"default": "0",
+			"read_only": 1,
+			"description": "Set by the scheduling engine when this task's dates violate a predecessor constraint.",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "conflict_reason",
+			"fieldtype": "Small Text",
+			"insert_after": "schedule_conflict",
+			"label": "Conflict Reason",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Task Depends On": [
+		{
+			"fieldname": "dependency_type",
+			"fieldtype": "Select",
+			"insert_after": "task",
+			"label": "Dependency Type",
+			"options": "FS\nSS\nFF",
+			"default": "FS",
+			"in_list_view": 1,
+			"description": "FS = Finish-to-Start, SS = Start-to-Start, FF = Finish-to-Finish",
+		},
+		{
+			"fieldname": "lag_days",
+			"fieldtype": "Int",
+			"insert_after": "dependency_type",
+			"label": "Lag (days)",
+			"default": "0",
+			"in_list_view": 1,
+			"description": "Days after the predecessor's constraint date. Negative = lead (allowed overlap).",
+		},
+	],
+	"Warehouse": [
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"label": "Project",
+			"options": "Project",
+			"insert_after": "company",
+			"module": "BuildSuite Core",
+		}
+	],
+	"User": [
+		{
+			# A Link to the Persona master (was a hardcoded Select). The Persona's
+			# `roles` child table drives which roles a user is granted — see
+			# utils.user.sync_persona_roles. Persona records are named after their
+			# label, so existing Select values resolve as Link targets unchanged.
+			"fieldname": "persona",
+			"fieldtype": "Link",
+			"label": "Persona",
+			"options": "Persona",
+			"insert_after": "username",
+			"module": "BuildSuite Core",
+		},
+		{
+			# The user's company is the source of truth for project company
+			# inference (new projects inherit the creator's company). Made
+			# mandatory in utils.user when a persona is assigned (server-side only;
+			# the Vue user form never shows it — the API stamps the creator's company).
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"label": "Company",
+			"options": "Company",
+			"insert_after": "persona",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Stock Entry": [
+		{
+			"fieldname": "custom_section_break_o8nvm",
+			"fieldtype": "Section Break",
+			"insert_after": "source_stock_entry",
+			"is_system_generated": 0,
+			"label": None,
+			"depends_on": 'eval:doc.stock_entry_type&&doc.purpose!="Material Transfer"',
+			"read_only": 0,
+		},
+		# Which BOQ line a Material Issue is charged to. Same four fields as
+		# Subcontractor Work Order Line, so CostCodePicker.vue works unchanged.
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "project",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			# Only an Item pick carries one; a Group pick leaves it empty.
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Material Request": [
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"insert_after": "naming_series",
+			"is_system_generated": 0,
+			"label": "Project",
+			"options": "Project",
+			"in_standard_filter": 1,
+			"reqd": 1,
+			"read_only": 0,
+		}
+	],
+	"Item": [
+		{
+			"fieldname": "custom_rate_master",
+			"fieldtype": "Link",
+			"label": "Rate Master",
+			"options": "Construction Rate Master",
+			"insert_after": "image",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Purchase Order": [
+		{
+			"fieldname": "custom_rate_master_banner",
+			"fieldtype": "HTML",
+			"label": "Rate Master Preview",
+			"insert_after": "items_section",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Purchase Invoice": [
+		{
+			# Back-link to the Subcontractor Bill that generated this PI (idempotency +
+			# read-through payment status). Mirrors how India Compliance adds its own
+			# custom fields to Purchase Invoice.
+			"fieldname": "subcontractor_bill",
+			"fieldtype": "Link",
+			"label": "Subcontractor Bill",
+			"options": "Subcontractor Bill",
+			"insert_after": "bill_no",
+			"read_only": 1,
+			"no_copy": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Supplier": [
+		{
+			# Subcontractors are Suppliers of type "Subcontractor" (set via property setter).
+			# Their construction trade lives here; shown only for that type.
+			"fieldname": "custom_trade",
+			"fieldtype": "Link",
+			"label": "Trade",
+			"options": "Construction Trade",
+			"insert_after": "supplier_type",
+			"depends_on": "eval:doc.supplier_type=='Subcontractor'",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Journal Entry": [
+		{
+			# Links this JE to a Petty Cash Request. The app sets it when disbursing; a Desk
+			# user can also set it by hand to disburse a request directly — on submit the
+			# request flips to Disbursed and the holder is stamped on the Petty Cash leg
+			# (buildsuite_core.utils.petty_cash JE hooks). Editable so the manual path works.
+			"fieldname": "petty_cash_request",
+			"fieldtype": "Link",
+			"label": "Petty Cash Request",
+			"options": "Petty Cash Request",
+			"insert_after": "voucher_type",
+			"no_copy": 1,
+			"depends_on": "eval:doc.voucher_type=='Petty Cash Issue'",
+			"description": "Disburses the linked Requested petty cash request when this entry is submitted.",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Journal Entry Account": [
+		# Charge a JV expense line to a BOQ cost code — the same four fields as Stock Entry /
+		# Subcontractor Bill Line, so the actuals log (buildsuite_core.api.boq_actuals) folds a
+		# Journal Entry debit into BOQ actual by cost code, and CostCodePicker.vue-style logic
+		# works unchanged. `project` is native on Journal Entry Account (surfaced in the grid via
+		# a property setter). Type + Cost Code show as grid columns so the feature is discoverable
+		# without expanding the row.
+		{
+			"fieldname": "custom_cost_code_type",
+			"fieldtype": "Select",
+			"label": "Cost Code Type",
+			"options": "\nGroup\nItem",
+			"insert_after": "project",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_group",
+			"fieldtype": "Data",
+			"label": "Cost Code Group",
+			"insert_after": "custom_cost_code_type",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			# Only an Item pick carries one; a Group pick leaves it empty.
+			"fieldname": "custom_cost_code_item",
+			"fieldtype": "Data",
+			"label": "Cost Code Item",
+			"insert_after": "custom_cost_code_group",
+			"depends_on": 'eval:doc.custom_cost_code_type=="Item"',
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_cost_code_label",
+			"fieldtype": "Data",
+			"label": "Cost Code",
+			"insert_after": "custom_cost_code_item",
+			"depends_on": "eval:doc.custom_cost_code_type",
+			"read_only": 1,
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	"Purchase Order Item": [
+		{
+			"fieldname": "custom_rate_master",
+			"fieldtype": "Link",
+			"label": "Rate Master",
+			"options": "Construction Rate Master",
+			"fetch_from": "item_code.custom_rate_master",
+			"insert_after": "item_group",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_rate_master_name",
+			"fieldtype": "Data",
+			"label": "RM Name",
+			"fetch_from": "custom_rate_master.rate_name",
+			"read_only": 1,
+			"insert_after": "custom_rate_master",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_rate_master_rate",
+			"fieldtype": "Currency",
+			"label": "RM Rate",
+			"fetch_from": "custom_rate_master.current_rate",
+			"read_only": 1,
+			"insert_after": "custom_rate_master_name",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Extend ERPNext's native Project Template: tag it to a Project Category and
+	# carry default Work Packages + Stages alongside the native task list.
+	"Project Template": [
+		{
+			"fieldname": "project_category",
+			"fieldtype": "Link",
+			"label": "Project Category",
+			"options": "Project Category",
+			"insert_after": "project_type",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_work_packages",
+			"fieldtype": "Table",
+			"label": "Work Packages",
+			"options": "BuildSuite Template Work Package",
+			"insert_after": "tasks",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stages",
+			"fieldtype": "Table",
+			"label": "Stages",
+			"options": "BuildSuite Template Stage",
+			"insert_after": "custom_work_packages",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Associate a template task with a template Work Package by code (resolved to a
+	# real Work Package at project-create time) and with the template Stage it
+	# belongs to (so the seeded Stage Planning gets the task in its task list).
+	"Project Template Task": [
+		{
+			"fieldname": "custom_work_package_code",
+			"fieldtype": "Data",
+			"label": "Work Package Code",
+			"insert_after": "subject",
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "custom_stage",
+			"fieldtype": "Data",
+			"label": "Stage",
+			"insert_after": "custom_work_package_code",
+			"module": "BuildSuite Core",
+		},
+	],
+	"Employee": [
+		{
+			"fieldname": "is_labour",
+			"fieldtype": "Check",
+			"insert_after": "reports_to",
+			"is_system_generated": 0,
+			"label": "Is Labour",
+		},
+		{
+			"fieldname": "custom_trade",
+			"fieldtype": "Link",
+			"insert_after": "is_labour",
+			"is_system_generated": 0,
+			"label": "Trade",
+			"depends_on": "eval:doc.is_labour==1",
+			"options": "Labour Trade",
+		},
+		{
+			"fieldname": "custom_contractor",
+			"description": "Leave blank for directly-employed workers",
+			"fieldtype": "Link",
+			"insert_after": "custom_trade",
+			"is_system_generated": 0,
+			"label": "Contractor",
+			"depends_on": "eval:doc.is_labour==1",
+			"options": "Supplier",
+			# Labour contractors only — same narrowing the Subcontract Work Order and
+			# Bill apply to their Supplier links.
+			"link_filters": '[["Supplier","supplier_type","=","Subcontractor"]]',
+		},
+		{
+			"fieldname": "custom_wage",
+			"description": "Daily Wage Amount",
+			"fieldtype": "Currency",
+			"insert_after": "salary_currency",
+			"is_system_generated": 0,
+			"label": "Wage",
+			"depends_on": "eval:doc.is_labour==1",
+			"mandatory_depends_on": "eval:doc.is_labour==1",
+			"options": "currency",
+		},
+		{
+			"fieldname": "custom_wage_for_overtime",
+			"description": "Hourly Wage for Overtime",
+			"fieldtype": "Currency",
+			"insert_after": "custom_wage",
+			"is_system_generated": 0,
+			"label": "Wage For Overtime",
+			"depends_on": "eval:doc.is_labour==1",
+			"options": "currency",
+		},
+		{
+			"fieldname": "project_assignment_section",
+			"fieldtype": "Section Break",
+			"insert_after": "branch",
+			"is_system_generated": 0,
+			"label": "Project Assignment",
+		},
+		{
+			"fieldname": "custom_project_assigned",
+			"fieldtype": "Table",
+			"insert_after": "project_assignment_section",
+			"is_system_generated": 0,
+			"permleavel": 1,
+			"label": "Project Assigned",
+			"depends_on": "eval:doc.is_labour==1",
+			"options": "Project Assigned",
+		},
+	],
+	# `employee` on GL Entry / Journal Entry Account is now provided by the
+	# "Employee" Accounting Dimension (see install.seed_employee_accounting_dimension),
+	# not a bespoke custom field — so it groups natively in the standard GL / Financial
+	# Statements and is settable on any account (Cash/Bank included).
+	"Account": [
+		{
+			# Opening balance seed for the Bank & Cash Accounts setting (S229). The
+			# current balance shown there is this opening balance ± every recorded
+			# movement (the GL balance), so the opening is stored, not posted.
+			"fieldname": "bs_opening_balance",
+			"fieldtype": "Currency",
+			"label": "Opening Balance (BuildSuite)",
+			"insert_after": "account_number",
+			"options": "account_currency",
+			"module": "BuildSuite Core",
+		},
+	],
+	# Quotation (native ERPNext) — the estimator's priced offer to a customer.
+	"Quotation": [
+		{
+			"fieldname": "customer_type",
+			"fieldtype": "Select",
+			"label": "Customer Type",
+			"options": "\nHomebuyer\nPrivate Client\nMain Contractor",
+			"insert_after": "party_name",
+			"in_standard_filter": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"options": "Project",
+			"label": "Project",
+			"insert_after": "order_type",
+			"module": "BuildSuite Core",
+		},
+		# For whoever picks the quotation up next. print_hide keeps it off the customer's copy.
+		{
+			"fieldname": "internal_note",
+			"fieldtype": "Small Text",
+			"label": "Internal Note",
+			"insert_after": "terms",
+			"print_hide": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+	# Where the line came from: typed on this quotation, or pulled from the assembly
+	# catalogue. Same three fields BuildSuite Tenders Items carries, under the same names.
+	"Quotation Item": [
+		{
+			"fieldname": "source",
+			"fieldtype": "Select",
+			"label": "Source",
+			"options": "Manual\nAssembly",
+			"default": "Manual",
+			"insert_after": "item_code",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		{
+			"fieldname": "code",
+			"fieldtype": "Data",
+			"label": "Code",
+			"description": "The estimator's own code for this line. Free to edit.",
+			"insert_after": "source",
+			"in_list_view": 1,
+			"module": "BuildSuite Core",
+		},
+		# Read-only and separate from "code" on purpose: this is the trail back to the
+		# catalogue, and editing the code above must not break it.
+		{
+			"fieldname": "source_ref",
+			"fieldtype": "Data",
+			"label": "Source Ref",
+			"description": "The assembly this line was priced from.",
+			"insert_after": "code",
+			"read_only": 1,
+			"module": "BuildSuite Core",
+		},
+	],
+}

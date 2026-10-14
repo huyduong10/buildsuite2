@@ -1,0 +1,85 @@
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import { setConfig } from "frappe-ui-config";
+import { frappeRequest } from "frappe-ui-frappe-request";
+import App from "./App.vue";
+import router from "./router";
+import "./style.css";
+import { applyBootToWindow, syncSessionFromCookie } from "./utils/session";
+import { __, installGlobalTranslate } from "./utils/translate";
+import { useSessionStore } from "./stores/session";
+import { useDataStore } from "./stores";
+import { DEV_BOOT_METHOD } from "./utils/appRoute";
+
+const DEV_BOOT_URL = `/api/method/${DEV_BOOT_METHOD}`;
+
+async function hydrateDevBoot() {
+	if (!import.meta.env.DEV) return;
+
+	try {
+		const response = await fetch(DEV_BOOT_URL, {
+			method: "POST",
+			credentials: "include",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": window.csrf_token || "",
+			},
+		});
+
+		if (!response.ok) {
+			throw new Error(`Boot fetch failed with status ${response.status}`);
+		}
+
+		const payload = await response.json();
+		const boot = payload?.message || payload;
+		applyBootToWindow(boot);
+	} catch (error) {
+		console.warn("[buildsuite] Failed to hydrate dev boot context", error);
+	}
+}
+
+async function mountApp() {
+	syncSessionFromCookie();
+	await hydrateDevBoot();
+
+	const app = createApp(App);
+	const pinia = createPinia();
+
+	// i18n (Frappe translation system). Reads window.translated_messages from boot. Exposed both as
+	// a Frappe-compatible window.__ (so frappe-ui translates too) and a Vue global so any template
+	// can call __('…') without importing it per component.
+	installGlobalTranslate();
+	app.config.globalProperties.__ = __;
+
+	setConfig("resourceFetcher", frappeRequest);
+
+	app.use(pinia);
+
+	const sessionStore = useSessionStore(pinia);
+	await sessionStore.bootstrapSession();
+
+	// Load the REAL Company DocType before mount so the switcher / pickers have the
+	// company list + resolved active company on first paint. Guarded — a failure
+	// (e.g. backend unreachable) must not block mount; the store falls back to the
+	// seed companies in hydrate().
+	const dataStore = useDataStore(pinia);
+	try {
+		await dataStore.loadCompanies();
+	} catch (error) {
+		console.warn("[buildsuite] Failed to load companies", error);
+	}
+
+	// Load the sidebar workspaces the user may see (backend registry) before mount, so the
+	// first paint has the correct nav. Only for a user who can open the app; guarded internally.
+	if (sessionStore.access?.allowed) {
+		await dataStore.loadWorkspaces();
+		await dataStore.loadProjectSettings();
+		dataStore.loadTodoCount();
+		dataStore.loadNotificationCount();
+	}
+
+	app.use(router);
+	app.mount("#app");
+}
+
+mountApp();

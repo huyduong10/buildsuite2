@@ -1,0 +1,385 @@
+<script setup>
+import { computed, ref } from "vue";
+import { useRouter, useRoute, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
+import { createDataAdapter } from "@/data/adapters";
+import UserAvatar from "@/components/UserAvatar.vue";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskList from "@/components/desk/DeskList.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import DeskLink from "@/components/desk/DeskLink.vue";
+import DeskLinkPicker from "@/components/desk/DeskLinkPicker.vue";
+import { usePermissions } from "@/composables/usePermissions";
+import { fmtDate } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const store = useDataStore();
+const router = useRouter();
+const route = useRoute();
+const adapter = createDataAdapter(store);
+const { canCreate, canRead } = usePermissions();
+
+const search = ref("");
+const taskFilter = ref(route.query.task || "");
+const enteredByFilter = ref("");
+const blockerOnly = ref(false);
+
+const TODAY = new Date().toISOString().slice(0, 10);
+function daysAgo(n) {
+	const d = new Date();
+	d.setDate(d.getDate() - n);
+	return d.toISOString().slice(0, 10);
+}
+const SEVEN_DAYS_AGO = daysAgo(6);
+
+const entriesResource = adapter.list("Task Progress Entry", {
+	fields: [
+		"name",
+		"task",
+		"company",
+		"entry_date",
+		"cumulative_progress",
+		"skilled",
+		"unskilled",
+		"weather",
+		"blocker",
+		"blocker_detail",
+		"narrative",
+		"owner",
+		"modified",
+		"creation",
+	],
+	orderBy: "entry_date desc",
+	pageLength: 0, // fetch all — DeskList paginates client-side; the filters need the full set
+	transform(rows) {
+		return rows.map((row) => ({
+			id: row?.name || "",
+			task: row?.task || "",
+			company: row?.company || "",
+			entryDate: row?.entry_date || null,
+			progressPct: Number(row?.cumulative_progress) || 0,
+			narrative: row?.narrative || "",
+			skilledLabour: Number(row?.skilled) || 0,
+			unskilledLabour: Number(row?.unskilled) || 0,
+			weather: row?.weather || "",
+			blockerFlag: !!Number(row?.blocker),
+			blockerNote: row?.blocker_detail || "",
+			enteredBy: row?.owner || "",
+			modified: row?.modified || null,
+			creation: row?.creation || null,
+		}));
+	},
+	// Don't fetch (and 403) when the persona has no Task Progress Entry read — the
+	// template shows the restricted notice instead. Mirrors the StagePlanningsView gate.
+	auto: canRead("taskProgressEntry"),
+});
+function toArray(data) {
+	if (Array.isArray(data)) return data;
+	if (Array.isArray(data?.value)) return data.value;
+	return [];
+}
+
+const allEntries = computed(() => toArray(entriesResource.data));
+
+// The set the page works from — scoped to the switcher's company when awareness is on (this view
+// fetches all + filters client-side). Everything else (search, task filter, KPIs) derives from it.
+const companyScopedEntries = computed(() => {
+	const scope =
+		store.multiCompanyEnabled && store.activeCompany ? store.activeCompany : null;
+	return scope ? allEntries.value.filter((e) => e.company === scope) : allEntries.value;
+});
+
+const tasksResource = adapter.list("Task", {
+	fields: ["name", "subject", "status"],
+	orderBy: "modified desc",
+	pageLength: 0, // need every task so the name->subject map resolves all entries
+	transform(rows) {
+		return rows.map((row) => ({
+			id: row?.name || "",
+			name: row?.subject || row?.name || "",
+		}));
+	},
+});
+const tasksMap = computed(() => {
+	const map = {};
+	toArray(tasksResource.data).forEach((t) => {
+		map[t.id] = t.name;
+	});
+	return map;
+});
+
+function taskName(id) {
+	return tasksMap.value[id] || id;
+}
+
+const sortField = ref("entryDate");
+const sortDirection = ref("desc");
+
+const SORT_OPTIONS = [
+	{ value: "entryDate", label: __("Entry Date") },
+	{ value: "progressPct", label: __("Progress %") },
+	{ value: "task", label: __("Task") },
+	{ value: "enteredBy", label: __("Entered By") },
+	{ value: "modified", label: __("Last Updated") },
+	{ value: "creation", label: __("Created") },
+];
+
+const items = computed(() => {
+	const term = search.value.trim().toLowerCase();
+	return companyScopedEntries.value.filter((e) => {
+		if (taskFilter.value && e.task !== taskFilter.value) return false;
+		if (enteredByFilter.value && e.enteredBy !== enteredByFilter.value) return false;
+		if (blockerOnly.value && !e.blockerFlag) return false;
+		if (term) {
+			const hay = `${e.id} ${e.narrative} ${taskName(e.task)} ${
+				e.blockerNote
+			}`.toLowerCase();
+			if (!hay.includes(term)) return false;
+		}
+		return true;
+	});
+});
+
+const kpis = computed(() => {
+	const all = companyScopedEntries.value;
+	return {
+		total: all.length,
+		today: all.filter((e) => e.entryDate === TODAY).length,
+		thisWeek: all.filter((e) => e.entryDate >= SEVEN_DAYS_AGO).length,
+		blockers: all.filter((e) => e.blockerFlag).length,
+	};
+});
+
+const WEATHER_ICON = {
+	Clear: "☀️",
+	Rainy: "🌧️",
+	Hot: "🌡️",
+	Cold: "❄️",
+	Storm: "⛈️",
+};
+
+const columns = [
+	{ key: "id", label: __("ID") },
+	{ key: "entryDate", label: __("Date") },
+	{ key: "task", label: __("Task") },
+	{ key: "progressPct", label: __("Progress"), align: "right" },
+	{ key: "labour", label: __("Labour"), align: "right" },
+	{ key: "weather", label: __("Weather") },
+	{ key: "flags", label: __("Flags") },
+	{ key: "enteredBy", label: __("Entered by") },
+];
+
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Task Progress Entry") },
+];
+
+const subtitle = computed(() =>
+	__("{0} of {1}", [items.value.length, companyScopedEntries.value.length])
+);
+
+function onRowClick(row) {
+	router.push(`/progress-entries/${row.id}`);
+}
+</script>
+
+<template>
+	<DeskPage
+		:title="__('Task Progress Entry')"
+		:subtitle="subtitle"
+		:breadcrumbs="breadcrumbs"
+	>
+		<template #actions>
+			<RouterLink
+				v-if="canCreate('taskProgressEntry')"
+				to="/progress-entries/new"
+				class="desk-save-btn"
+				>+ {{ __("New Entry") }}</RouterLink
+			>
+		</template>
+
+		<!-- PRM-014 — roles without Task Progress Entry access get a restricted notice. -->
+		<div
+			v-if="!canRead('taskProgressEntry')"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			{{ __("You don't have access to Task Progress Entries.") }}
+		</div>
+
+		<!-- KPI strip -->
+		<div
+			v-if="canRead('taskProgressEntry')"
+			class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4"
+		>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Total entries") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.total }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Filed today") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.today }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Last 7 days") }}
+				</div>
+				<div class="text-base font-semibold text-ink-900 mt-0.5">{{ kpis.thisWeek }}</div>
+			</div>
+			<div class="bg-white border border-ink-200 px-3 py-2" style="border-radius: 2px">
+				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+					{{ __("Flagged blockers") }}
+				</div>
+				<div
+					class="text-base font-semibold mt-0.5"
+					:class="kpis.blockers > 0 ? 'text-danger-700' : 'text-ink-900'"
+				>
+					{{ kpis.blockers }}
+				</div>
+			</div>
+		</div>
+
+		<DeskList
+			v-if="canRead('taskProgressEntry')"
+			v-model="search"
+			:rows="items"
+			:columns="columns"
+			row-key="id"
+			:search-placeholder="__('Search narrative, task, blocker note…')"
+			:sort-field="sortField"
+			:sort-direction="sortDirection"
+			:sort-options="SORT_OPTIONS"
+			@update:sort-field="sortField = $event"
+			@update:sort-direction="sortDirection = $event"
+			@row-click="onRowClick"
+		>
+			<template #filter-chips>
+				<!-- Task filter -->
+				<DeskLinkPicker
+					v-model="taskFilter"
+					class="!w-56"
+					doctype="Task"
+					label-field="subject"
+					value-field="name"
+					:search-fields="['subject', 'name']"
+					:page-length="10"
+					:placeholder="__('Task: Any')"
+				/>
+
+				<!-- Entered by filter -->
+				<DeskLinkPicker
+					v-model="enteredByFilter"
+					class="!w-44"
+					doctype="User"
+					label-field="full_name"
+					value-field="name"
+					:search-fields="['full_name', 'name']"
+					:page-length="10"
+					:placeholder="__('Entered by: Any')"
+				/>
+
+				<!-- Blocker-only toggle -->
+				<button
+					v-if="!blockerOnly"
+					type="button"
+					class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+					style="border-radius: 2px"
+					@click="blockerOnly = true"
+				>
+					🚩 {{ __("Blockers only") }}
+				</button>
+				<DeskFilterChip
+					v-else
+					:label="__('Blockers')"
+					value="only"
+					@remove="blockerOnly = false"
+				/>
+			</template>
+
+			<template #cell-id="{ row }">
+				<DeskLink
+					:to="`/progress-entries/${row.id}`"
+					@click.stop
+					class="font-mono text-xs"
+					>{{ row.id }}</DeskLink
+				>
+			</template>
+			<template #cell-entryDate="{ row }">
+				<span class="text-xs text-ink-700">{{ fmtDate(row.entryDate) }}</span>
+			</template>
+			<template #cell-task="{ row }">
+				<DeskLink :to="`/tasks/${row.task}`" @click.stop>{{
+					taskName(row.task)
+				}}</DeskLink>
+			</template>
+			<template #cell-progressPct="{ row }">
+				<div class="flex items-center justify-end gap-2">
+					<div class="w-14 h-1.5 bg-ink-100 overflow-hidden" style="border-radius: 2px">
+						<div
+							class="h-full"
+							:class="
+								row.progressPct === 100
+									? 'bg-success-500'
+									: row.progressPct > 0
+									? 'bg-brand-500'
+									: 'bg-ink-300'
+							"
+							:style="`width:${row.progressPct}%`"
+						></div>
+					</div>
+					<span class="text-xs tabular-nums w-8 text-right font-medium"
+						>{{ row.progressPct }}%</span
+					>
+				</div>
+			</template>
+			<template #cell-labour="{ row }">
+				<span class="text-xs text-ink-700 tabular-nums">
+					{{ row.skilledLabour }}+{{ row.unskilledLabour }}
+					<span class="text-ink-400"
+						>({{ row.skilledLabour + row.unskilledLabour }})</span
+					>
+				</span>
+			</template>
+			<template #cell-weather="{ row }">
+				<span v-if="row.weather" class="text-xs">
+					<span class="mr-1">{{ WEATHER_ICON[row.weather] || "" }}</span
+					>{{ __(row.weather) }}
+				</span>
+				<span v-else class="text-[10px] text-ink-300">—</span>
+			</template>
+			<template #cell-flags="{ row }">
+				<span
+					v-if="row.blockerFlag"
+					class="text-[10px] px-1.5 py-0.5 bg-danger-50 text-danger-700 font-medium"
+					style="border-radius: 2px"
+					:title="row.blockerNote || __('Blocker flagged')"
+					>🚩 {{ __("Blocker") }}</span
+				>
+				<span v-else class="text-[10px] text-ink-300">—</span>
+			</template>
+			<template #cell-enteredBy="{ row }">
+				<div v-if="row.enteredBy" class="inline-flex items-center gap-2">
+					<UserAvatar :user-id="row.enteredBy" size="xs" />
+					<span class="text-xs text-ink-700">{{ row.enteredBy }}</span>
+				</div>
+				<span v-else class="text-[10px] text-ink-300">—</span>
+			</template>
+
+			<template #empty>
+				<div class="text-sm text-ink-500">
+					{{ __("No progress entries match these filters") }} ·
+					<RouterLink
+						v-if="canCreate('taskProgressEntry')"
+						to="/progress-entries/new"
+						class="desk-link"
+						>{{ __("File a new entry") }} →</RouterLink
+					>
+				</div>
+			</template>
+		</DeskList>
+	</DeskPage>
+</template>

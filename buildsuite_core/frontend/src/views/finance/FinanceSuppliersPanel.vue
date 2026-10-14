@@ -1,0 +1,262 @@
+<script setup>
+// Project Finance › Suppliers master. Desk-styled list (DeskList + filter chips +
+// Tax ID). Subcontractors ARE suppliers (ERPNext model) — they appear here as rows
+// of type "Subcontractor", read live from the same Supplier master. Row behaviour:
+//   - regular supplier  → edit modal (create + edit live here)
+//   - subcontractor row → routes to the Subcontract master detail (managed there)
+// Backed by buildsuite_core.api.suppliers.*.
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { showToast } from "@/utils/appToast";
+import { listSuppliers, addSupplier, updateSupplier } from "@/data/suppliersApi";
+import { createDataAdapter } from "@/data/adapters";
+import { useConfirm } from "@/composables/useConfirm";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskList from "@/components/desk/DeskList.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+import DeskFilterChip from "@/components/desk/DeskFilterChip.vue";
+import PartyFormModal from "./PartyFormModal.vue";
+import { usePermissions } from "@/composables/usePermissions";
+import { fmtINR } from "@/utils/format";
+import { __ } from "@/utils/translate";
+
+const router = useRouter();
+const store = useDataStore();
+const { canCreate, canDelete, canRead } = usePermissions();
+const adapter = createDataAdapter(store);
+const confirmDialog = useConfirm();
+// Regular suppliers are created AND edited here; create and write role-sets coincide
+// (Procurement / PM / Director / admin tier), so one capability gates both.
+const canManage = computed(() => canCreate("supplier"));
+
+// The real supplier_type options (subcontractors are managed in the Subcontract module).
+const TYPE_OPTIONS = ["Company", "Individual", "Partnership", "Subcontractor"];
+const MODAL_TYPES = ["Company", "Individual", "Partnership"];
+
+const suppliers = ref([]);
+const loading = ref(true);
+async function load() {
+	loading.value = true;
+	try {
+		suppliers.value = await listSuppliers();
+	} catch (err) {
+		showToast(err.message || __("Failed to load suppliers"), "error");
+	} finally {
+		loading.value = false;
+	}
+}
+onMounted(load);
+
+const search = ref("");
+const typeFilter = ref("");
+
+const rows = computed(() => {
+	const t = search.value.trim().toLowerCase();
+	let list = suppliers.value;
+	if (typeFilter.value) list = list.filter((s) => s.type === typeFilter.value);
+	if (t)
+		list = list.filter(
+			(s) =>
+				(s.name || "").toLowerCase().includes(t) ||
+				(s.contactPerson || "").toLowerCase().includes(t) ||
+				(s.gstin || "").toLowerCase().includes(t) ||
+				(s.trade || "").toLowerCase().includes(t)
+		);
+	return list;
+});
+
+const columns = [
+	{ key: "name", label: __("Name") },
+	{ key: "type", label: __("Type") },
+	{ key: "contactPerson", label: __("Contact") },
+	{ key: "phone", label: __("Phone") },
+	{ key: "gstin", label: __("Tax ID") },
+	{ key: "advance", label: __("Advance paid"), align: "right" },
+];
+
+// Sort by Updated (most-recently-touched first) by default; Created and Updated are always
+// offered alongside the column sorts. Rows carry `updated`/`created` from the API.
+const sortOptions = [
+	...columns.map((c) => ({ value: c.key, label: c.label })),
+	{ value: "updated", label: __("Updated") },
+	{ value: "created", label: __("Created") },
+];
+const sortField = ref("updated");
+const sortDirection = ref("desc");
+
+// --- create / edit modal (regular suppliers only) ---
+const modalOpen = ref(false);
+const modalError = ref("");
+const editing = ref(null);
+
+function openCreate() {
+	editing.value = null;
+	modalError.value = "";
+	modalOpen.value = true;
+}
+function onRowClick(row) {
+	if (row.is_subcontractor) {
+		router.push(`/subcontractors/${row.id}`);
+		return;
+	}
+	// Read-access personas open the record read-only (view, no edit/save/delete); the modal
+	// switches to view mode via :read-only. Only block users who can't read at all.
+	if (!canRead("supplier")) return;
+	editing.value = row;
+	modalError.value = "";
+	modalOpen.value = true;
+}
+async function onSave(payload) {
+	modalError.value = "";
+	try {
+		if (editing.value) await updateSupplier(editing.value.id, payload);
+		else await addSupplier(payload);
+		modalOpen.value = false;
+		await load();
+	} catch (err) {
+		modalError.value = err.message || __("Save failed.");
+	}
+}
+async function onDelete() {
+	if (!editing.value) return;
+	const ok = await confirmDialog({
+		title: __("Delete {0}?", [editing.value.name]),
+		message: __(
+			"This supplier master record will be removed permanently. Deletion is blocked if it has linked transactions (bills, payments, work orders)."
+		),
+		confirmLabel: __("Delete"),
+		destructive: true,
+	});
+	if (!ok) return;
+	modalError.value = "";
+	try {
+		await adapter.remove("Supplier", editing.value.id);
+		modalOpen.value = false;
+		await load();
+		showToast(__("Supplier deleted."));
+	} catch (err) {
+		modalError.value =
+			err.message || __("Delete failed — the supplier may have linked transactions.");
+	}
+}
+
+const breadcrumbs = [
+	{ label: __("Project Finance"), to: "/project-finance" },
+	{ label: __("Suppliers") },
+];
+</script>
+
+<template>
+	<DeskPage :title="__('Suppliers')" :breadcrumbs="breadcrumbs">
+		<div>
+			<div v-if="canManage" class="flex items-center justify-end mb-2">
+				<button type="button" class="desk-save-btn" @click="openCreate">
+					{{ __("+ New Supplier") }}
+				</button>
+			</div>
+
+			<DeskList
+				v-model="search"
+				:rows="rows"
+				:columns="columns"
+				row-key="id"
+				:search-placeholder="__('Search name, contact, trade, tax ID…')"
+				:sort-options="sortOptions"
+				:sort-field="sortField"
+				:sort-direction="sortDirection"
+				@update:sort-field="sortField = $event"
+				@update:sort-direction="sortDirection = $event"
+				@row-click="onRowClick"
+			>
+				<template #filter-chips>
+					<DeskFilterChip
+						v-if="typeFilter"
+						:label="__('Type: {0}', [__(typeFilter)])"
+						@remove="typeFilter = ''"
+					/>
+					<DeskSelect v-else v-model="typeFilter" class="!w-44">
+						<option value="">{{ __("All types") }}</option>
+						<option v-for="t in TYPE_OPTIONS" :key="t" :value="t">{{ __(t) }}</option>
+					</DeskSelect>
+				</template>
+
+				<template #cell-name="{ row }">
+					<span class="text-ink-900 font-medium">{{ row.name }}</span>
+					<span v-if="row.trade" class="ml-1.5 text-[10px] text-ink-400">{{
+						row.trade
+					}}</span>
+				</template>
+				<template #cell-type="{ row }">
+					<span
+						v-if="row.is_subcontractor"
+						class="text-[11px] px-1.5 py-0.5 bg-info-50 text-info-700 rounded"
+						>{{ __("Subcontractor") }}</span
+					>
+					<span
+						v-else-if="row.type"
+						class="text-[11px] px-1.5 py-0.5 bg-ink-100 text-ink-700 rounded"
+						>{{ row.type }}</span
+					>
+					<span v-else class="text-ink-400">—</span>
+				</template>
+				<template #cell-contactPerson="{ row }">
+					<span class="text-xs text-ink-700">{{ row.contactPerson || "—" }}</span>
+				</template>
+				<template #cell-phone="{ row }">
+					<span class="text-xs text-ink-500">{{ row.phone || "—" }}</span>
+				</template>
+				<template #cell-gstin="{ row }">
+					<span class="text-xs font-mono text-ink-500">{{ row.gstin || "—" }}</span>
+				</template>
+				<template #cell-advance="{ row }">
+					<span
+						v-if="row.advance > 0"
+						class="text-xs tabular-nums text-info-700 font-medium"
+						>{{ fmtINR(row.advance) }}</span
+					>
+					<span v-else class="text-ink-400">—</span>
+				</template>
+
+				<template #empty>
+					<div class="text-sm text-ink-500">
+						{{ loading ? __("Loading suppliers…") : __("No suppliers yet.") }}
+						<template v-if="canManage && !loading">
+							·
+							<button type="button" class="desk-link" @click="openCreate">
+								{{ __("Add one →") }}
+							</button>
+						</template>
+					</div>
+				</template>
+			</DeskList>
+			<p class="text-[11px] text-ink-400 mt-2">
+				{{
+					__(
+						'Subcontractors are suppliers of type "Subcontractor" — click one to open its master in the Subcontract module.'
+					)
+				}}
+			</p>
+
+			<PartyFormModal
+				:open="modalOpen"
+				:title="
+					editing
+						? canManage
+							? __('Edit Supplier')
+							: __('View Supplier')
+						: __('New Supplier')
+				"
+				:type-label="__('Supplier type')"
+				:type-options="MODAL_TYPES"
+				:initial="editing"
+				:server-error="modalError"
+				:can-delete="canDelete('subcontractor')"
+				:read-only="!canManage"
+				@save="onSave"
+				@delete="onDelete"
+				@close="modalOpen = false"
+			/>
+		</div>
+	</DeskPage>
+</template>

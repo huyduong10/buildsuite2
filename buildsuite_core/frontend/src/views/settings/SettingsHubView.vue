@@ -1,0 +1,327 @@
+<script setup>
+// Settings hub — tile grid grouped by area. Admin-only tiles hide entirely
+// from non-admin roles. Only a subset have working CRUD pages today; the
+// rest are visible placeholders for the eventual sub-sections.
+
+import { computed, ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useDataStore } from "@/stores";
+import { listBuildsuiteUsers } from "@/data/usersApi";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
+import { getWorkspaceIconPath } from "@/utils/workspaceIcons";
+import { __ } from "@/utils/translate";
+
+const store = useDataStore();
+const router = useRouter();
+
+const breadcrumbs = [{ label: __("BuildSuite Core"), to: "/" }, { label: __("Settings") }];
+
+const isAdmin = computed(() => store.isAdmin);
+const isBSA = computed(() => store.isBSA);
+
+const userCount = ref(undefined);
+onMounted(async () => {
+	if (isAdmin.value) userCount.value = (await listBuildsuiteUsers()).length;
+});
+
+// Tile groups. `adminOnly: true` filters the tile out for non-admin roles.
+// `bsaOnly: true` filters out for non-BSA. `stub: true` renders the tile in
+// muted style and disables navigation.
+const groups = computed(() => [
+	{
+		title: __("Organisation"),
+		tiles: [
+			{
+				slug: "companies",
+				icon: "building-2",
+				label: __("Company"),
+				desc: __("Companies, addresses, fiscal year per entity."),
+				to: "/settings/companies",
+				count: store.companies.length,
+				countLabel: store.companies.length === 1 ? __("company") : __("companies"),
+			},
+			{
+				slug: "users",
+				icon: "users",
+				label: __("Users"),
+				desc: __("People who can log in. Role assignment and enabled status."),
+				to: "/settings/users",
+				count: userCount.value,
+				countLabel: __("users"),
+				adminOnly: true,
+			},
+			{
+				slug: "personas",
+				icon: "shield",
+				label: __("Personas"),
+				desc: __("Job roles users pick from, each mapping to the Frappe roles it grants."),
+				to: "/settings/personas",
+				adminOnly: true,
+			},
+			{
+				slug: "roles",
+				icon: "shield",
+				label: __("Roles & Permissions"),
+				desc: __("Role definitions, workspace visibility and record-level permissions."),
+				adminOnly: true,
+				stub: true,
+			},
+			{
+				slug: "naming",
+				icon: "tag",
+				label: __("Naming Series"),
+				desc: __("ID prefixes for Project, Task, BOQ, SCO etc."),
+				adminOnly: true,
+				stub: true,
+			},
+		],
+	},
+	{
+		title: __("BuildSuite product settings"),
+		tiles: [
+			{
+				slug: "core",
+				icon: "puzzle",
+				label: __("BuildSuite Core Settings"),
+				desc: __(
+					"Org-wide BuildSuite toggles — company segregation, default project type, default company.",
+				),
+				to: "/settings/core",
+				adminOnly: true,
+			},
+			{
+				slug: "project",
+				icon: "clipboard-list",
+				label: __("Project Settings"),
+				desc: __(
+					"The standard project page — which tabs every project offers by default. Each project can overrule it.",
+				),
+				to: "/settings/project",
+				adminOnly: true,
+			},
+			{
+				slug: "finance-accounts",
+				icon: "wallet",
+				label: __("Bank & Cash Accounts"),
+				desc: __(
+					"Bank, cash and petty cash accounts shown across Project Finance — with opening and derived current balances.",
+				),
+				to: "/settings/finance-accounts",
+				adminOnly: true,
+			},
+			{
+				slug: "workspace-setting",
+				icon: "site-execution",
+				label: __("Workspace Setting"),
+				desc: __("Report-style shortcut tiles shown in each workspace — one tab per workspace."),
+				to: "/settings/workspaces",
+				adminOnly: true,
+			},
+			{
+				slug: "workspace-structure",
+				icon: "layout-grid",
+				label: __("Workspace Structure"),
+				desc: __("Configure workspaces and per-role shortcut grids."),
+				to: "/settings/workspace-structure",
+				bsaOnly: true,
+			},
+			{
+				slug: "project-categories",
+				icon: "tag",
+				label: __("Project Categories"),
+				desc: __(
+					"Construction categories that drive project templating, each with its own Work Package label.",
+				),
+				to: "/settings/project-categories",
+				adminOnly: true,
+			},
+		],
+	},
+	{
+		title: __("System"),
+		adminOnly: true,
+		tiles: [
+			{
+				slug: "general",
+				icon: "settings",
+				label: __("General Settings"),
+				desc: __("Date format, currency, time zone, default company, fiscal year."),
+				adminOnly: true,
+				stub: true,
+			},
+			{
+				slug: "email",
+				icon: "mail",
+				label: __("Email & Notifications"),
+				desc: __("SMTP, notification rules, email templates, recipients."),
+				adminOnly: true,
+				stub: true,
+			},
+			{
+				slug: "workflows",
+				icon: "refresh-ccw",
+				label: __("Workflows"),
+				desc: __("Approval chains for BOQ, SCO, Petty Cash and RA Bills."),
+				adminOnly: true,
+				stub: true,
+			},
+			{
+				slug: "custom-fields",
+				icon: "wrench",
+				label: __("Custom Fields"),
+				desc: __("Add fields to existing DocTypes."),
+				adminOnly: true,
+				stub: true,
+			},
+			{
+				slug: "print",
+				icon: "file",
+				label: __("Print Templates"),
+				desc: __("Letter heads, print formats per DocType, page sizes."),
+				adminOnly: true,
+				stub: true,
+			},
+			{
+				slug: "integrations",
+				icon: "plug",
+				label: __("Integrations"),
+				desc: __("API keys, webhooks, OAuth apps and social login providers."),
+				adminOnly: true,
+				stub: true,
+			},
+		],
+	},
+	{
+		title: __("Data & Diagnostics"),
+		tiles: [
+			{
+				slug: "data",
+				icon: "database",
+				label: __("Data Tools"),
+				desc: __("Export the dataset, reset to defaults, inspect local storage."),
+				to: "/settings/data",
+			},
+			{
+				slug: "audit",
+				icon: "clipboard-list",
+				label: __("Audit Log"),
+				desc: __("Recent user actions across the system — who changed what when."),
+				adminOnly: true,
+				stub: true,
+			},
+		],
+	},
+]);
+
+// Filter groups + tiles by role. Hide whole groups if every tile inside is
+// admin-only and the user isn't admin.
+const visibleGroups = computed(() =>
+	groups.value
+		.map((g) => ({
+			...g,
+			tiles: g.tiles.filter((t) => {
+				if (t.bsaOnly && !isBSA.value) return false;
+				if (t.adminOnly && !isAdmin.value) return false;
+				return true;
+			}),
+		}))
+		.filter((g) => g.tiles.length)
+);
+
+function onTileClick(tile) {
+	if (tile.stub || !tile.to) return;
+	router.push(tile.to);
+}
+</script>
+
+<template>
+	<DeskPage
+		:title="__('Settings')"
+		:subtitle="__('Organisation, system, data and diagnostics')"
+		:breadcrumbs="breadcrumbs"
+	>
+		<!-- PRM-005 — Settings is restricted to System Manager + BuildSuite Administrator. -->
+		<div
+			v-if="!isAdmin"
+			class="px-3 py-2 bg-warning-50 border border-warning-100 text-xs text-warning-700 dark:bg-ink-800 dark:border-ink-700"
+			style="border-radius: 6px"
+		>
+			{{ __("Settings is restricted to administrators.") }}
+		</div>
+		<template v-else>
+			<!-- Signed-in chip — shows which role/company is active -->
+			<div
+				class="flex items-center gap-3 mb-5 p-3 border border-ink-200 bg-ink-50"
+				style="border-radius: 6px"
+			>
+				<UserAvatar :user-id="store.user?.id" size="sm" />
+				<div class="flex-1 min-w-0">
+					<div class="text-sm text-ink-900">
+						Signed in as <span class="font-medium">{{ store.user?.name }}</span> · role
+						<span class="font-medium text-ink-700">{{ store.currentRole?.name }}</span>
+						<span v-if="store.isMultiCompany && store.currentCompany">
+							· acting on
+							<span class="font-medium text-ink-700">{{
+								store.currentCompany.shortName
+							}}</span></span
+						>
+					</div>
+				</div>
+			</div>
+
+			<div v-for="group in visibleGroups" :key="group.title" class="mb-6">
+				<h2 class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-2">
+					{{ group.title }}
+				</h2>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+					<div
+						v-for="tile in group.tiles"
+						:key="tile.slug"
+						class="border border-ink-200 bg-white p-3"
+						:class="
+							tile.stub
+								? 'opacity-90'
+								: 'hover:border-brand-400 hover:bg-brand-50 cursor-pointer'
+						"
+						style="border-radius: 6px"
+						@click="onTileClick(tile)"
+					>
+						<div class="flex items-start gap-3">
+							<div
+								class="w-9 h-9 rounded-lg bg-ink-50 text-ink-600 flex items-center justify-center flex-shrink-0"
+							>
+								<svg
+									class="w-5 h-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+									v-html="getWorkspaceIconPath(tile.icon)"
+								/>
+							</div>
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2 flex-wrap">
+									<div class="text-sm font-medium text-ink-900">
+										{{ tile.label }}
+									</div>
+									<span
+										v-if="!tile.stub && tile.count !== undefined"
+										class="ml-auto text-[10px] text-ink-500 tabular-nums"
+										>{{ tile.count }} {{ tile.countLabel }}</span
+									>
+								</div>
+								<div class="text-[11px] text-ink-600 mt-0.5 leading-snug">
+									{{ tile.desc }}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</template>
+	</DeskPage>
+</template>

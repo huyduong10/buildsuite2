@@ -1,0 +1,345 @@
+<script setup>
+// BuildSuite Core Settings — Single DocType. Org-wide BuildSuite-product
+// toggles. Session 34, M1 scope. Admin or BSA gated.
+//
+// Production shape: Frappe Single DocType (one record per site). Prototype
+// represents it as store.coreSettings (flat object). Edits flow through
+// store.updateCoreSettings(patch).
+
+import { ref, watch, onMounted } from "vue";
+import { useRouter, RouterLink } from "vue-router";
+import { useDataStore } from "@/stores";
+import {
+	getCoreSettings,
+	setProjectNaming,
+	setPettyCashAccount,
+	setMultiCompanyEnabled,
+} from "@/data/coreSettingsApi";
+import { setCompanyAwareness } from "@/composables/useActiveCompany";
+import { useConfirm } from "@/composables/useConfirm";
+import { showToast } from "@/utils/appToast";
+import { __ } from "@/utils/translate";
+import {
+	restoreDefaultRolePermissions,
+	exportRolePermissions,
+} from "@/data/rolePermissionsApi";
+import DeskPage from "@/components/desk/DeskPage.vue";
+import DeskForm from "@/components/desk/DeskForm.vue";
+import DeskActionBar from "@/components/desk/DeskActionBar.vue";
+import DeskSection from "@/components/desk/DeskSection.vue";
+import DeskField from "@/components/desk/DeskField.vue";
+import DeskSelect from "@/components/desk/DeskSelect.vue";
+
+const router = useRouter();
+const store = useDataStore();
+const confirmDialog = useConfirm();
+
+const editing = ref(false);
+const form = ref({});
+const saving = ref(false);
+
+// --- Role permissions (admin actions) ------------------------------------------------
+// The default DocPerm matrix is no longer re-applied on app update, so a client's in-Desk
+// permission tuning survives an upgrade. Restoring the shipped defaults is now an explicit
+// action; exporting the current perms lets a client's customizations be folded back into
+// the defaults.
+const permBusy = ref("");
+
+async function onRestoreDefaults() {
+	const ok = await confirmDialog({
+		title: __("Restore default permissions?"),
+		message: __(
+			"This overwrites ALL BuildSuite role permissions on this site back to the shipped defaults. Any permission changes made in Desk will be lost. This cannot be undone — export the current permissions first if you want to keep them."
+		),
+		confirmLabel: __("Restore defaults"),
+		destructive: true,
+	});
+	if (!ok) return;
+	permBusy.value = "restore";
+	try {
+		await restoreDefaultRolePermissions();
+		showToast(
+			__(
+				"Restore started — default permissions are being re-applied in the background. This can take a few minutes; refresh once it completes."
+			)
+		);
+	} catch (err) {
+		showToast(err.message || __("Failed to restore default permissions"), "error");
+	} finally {
+		permBusy.value = "";
+	}
+}
+
+async function onExportPermissions() {
+	permBusy.value = "export";
+	try {
+		const data = await exportRolePermissions();
+		const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		const stamp = new Date().toISOString().slice(0, 10);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `buildsuite-role-permissions-${data.site || "site"}-${stamp}.json`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		URL.revokeObjectURL(url);
+		showToast(__("Role permissions exported."));
+	} catch (err) {
+		showToast(err.message || __("Failed to export permissions"), "error");
+	} finally {
+		permBusy.value = "";
+	}
+}
+
+// Project naming MODE is server-persisted (BuildSuite Core Settings Single). It's
+// just the mode here ("Project ID" | "Name Series"); the specific series, when Name
+// Series, is chosen per-project on the New Project form.
+const PROJECT_ID_MODE = "Project ID";
+const projectNaming = ref(PROJECT_ID_MODE);
+const namingModes = ref([PROJECT_ID_MODE, "Name Series"]);
+
+// Petty Cash Account — the configurable Cash/Bank float that petty cash and expenses post
+// to/from (server-persisted on BuildSuite Core Settings). Loaded like project naming.
+const pettyCashAccount = ref("");
+const pettyCashOptions = ref([]);
+
+// Company-awareness master switch (server-persisted). Off = single-company UX.
+const multiCompanyEnabled = ref(false);
+
+onMounted(async () => {
+	try {
+		const res = await getCoreSettings();
+		projectNaming.value = res.project_naming || PROJECT_ID_MODE;
+		namingModes.value = res.project_naming_modes || namingModes.value;
+		pettyCashAccount.value = res.petty_cash_account || "";
+		pettyCashOptions.value = res.petty_cash_options || [];
+		multiCompanyEnabled.value = !!res.multi_company_enabled;
+	} catch {
+		/* leave defaults; non-admins can't read it */
+	}
+});
+
+watch(
+	() => store.coreSettings,
+	(s) => {
+		if (s) form.value = JSON.parse(JSON.stringify(s));
+	},
+	{ immediate: true, deep: true }
+);
+
+function startEdit() {
+	form.value = {
+		...JSON.parse(JSON.stringify(store.coreSettings)),
+		naming_mode: projectNaming.value,
+		petty_cash_account: pettyCashAccount.value,
+		multi_company_enabled: multiCompanyEnabled.value,
+	};
+	editing.value = true;
+}
+function cancelEdit() {
+	form.value = JSON.parse(JSON.stringify(store.coreSettings));
+	editing.value = false;
+}
+async function saveEdit() {
+	if (!store.isAdmin) return;
+	saving.value = true;
+	try {
+		store.updateCoreSettings({ ...form.value });
+		if (form.value.naming_mode && form.value.naming_mode !== projectNaming.value) {
+			await setProjectNaming(form.value.naming_mode);
+			projectNaming.value = form.value.naming_mode;
+		}
+		if (form.value.petty_cash_account !== pettyCashAccount.value) {
+			const res = await setPettyCashAccount(form.value.petty_cash_account || "");
+			pettyCashAccount.value = res.petty_cash_account || "";
+		}
+		if (!!form.value.multi_company_enabled !== multiCompanyEnabled.value) {
+			const res = await setMultiCompanyEnabled(form.value.multi_company_enabled);
+			multiCompanyEnabled.value = !!res.multi_company_enabled;
+			// Reflect it live — the topbar switcher and every company-scoped list/picker follow.
+			store.multiCompanyEnabled = multiCompanyEnabled.value;
+			setCompanyAwareness(multiCompanyEnabled.value);
+		}
+		editing.value = false;
+	} catch (err) {
+		showToast(err.message || __("Failed to save settings"), "error");
+	} finally {
+		saving.value = false;
+	}
+}
+function onPrimary() {
+	editing.value ? saveEdit() : startEdit();
+}
+
+const breadcrumbs = [
+	{ label: __("BuildSuite Core"), to: "/" },
+	{ label: __("Settings"), to: "/settings" },
+	{ label: __("BuildSuite Core Settings") },
+];
+
+const PROJECT_TYPES = ["Commercial", "Residential", "Infrastructure", "Industrial", "Renovation"];
+</script>
+
+<template>
+	<DeskPage
+		:title="__('BuildSuite Core Settings')"
+		:subtitle="__('Org-wide BuildSuite toggles')"
+		:breadcrumbs="breadcrumbs"
+	>
+		<DeskForm>
+			<template #action-bar>
+				<DeskActionBar
+					v-if="store.isAdmin"
+					:save-label="editing ? (saving ? __('Saving…') : __('Save')) : __('Edit')"
+					:show-cancel="editing"
+					:saving="saving"
+					:cancel-label="__('Cancel')"
+					@save="onPrimary"
+					@cancel="cancelEdit"
+				/>
+				<div
+					v-else
+					class="px-3 py-2 bg-warning-50 border-b border-warning-100 text-xs text-warning-700"
+				>
+					{{ __("Read-only. Editing requires Admin or BuildSuite Administrator role.") }}
+				</div>
+			</template>
+
+			<div class="max-w-3xl mx-auto">
+				<DeskSection :title="__('Multi-company')">
+					<DeskField
+						:label="__('Enable company awareness')"
+						:hint="
+							__(
+								'Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.',
+							)
+						"
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{ multiCompanyEnabled ? __("Enabled") : __("Disabled") }}
+						</div>
+						<label v-else class="flex items-center gap-2 py-1 text-sm cursor-pointer">
+							<input
+								type="checkbox"
+								v-model="form.multi_company_enabled"
+								class="accent-brand-600"
+							/>
+							<span>{{ form.multi_company_enabled ? __("Enabled") : __("Disabled") }}</span>
+						</label>
+					</DeskField>
+					<DeskField
+						:label="__('Default company')"
+						:hint="
+							__(
+								'The company pre-selected on Project create when the user doesn\'t pick one explicitly. Must exist in the Companies fixture.',
+							)
+						"
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{
+								store.companyById(store.coreSettings.default_company)?.name ||
+								store.coreSettings.default_company
+							}}
+						</div>
+						<DeskSelect v-else v-model="form.default_company">
+							<option v-for="c in store.companies" :key="c.id" :value="c.id">
+								{{ c.name }}
+							</option>
+						</DeskSelect>
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection :title="__('Project defaults')">
+					<DeskField
+						:label="__('Default project type')"
+						:hint="__('Pre-fills the Project type field on new projects.')"
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{ __(store.coreSettings.default_project_type) }}
+						</div>
+						<DeskSelect v-else v-model="form.default_project_type">
+							<option v-for="t in PROJECT_TYPES" :key="t" :value="t">{{ __(t) }}</option>
+						</DeskSelect>
+					</DeskField>
+					<DeskField
+						:label="__('Project naming')"
+						:hint="
+							__(
+								'How a new project\'s record ID is generated. \'Project ID\' uses the entered Project ID as the record name; \'Name Series\' lets the creator pick a naming series on the New Project form.',
+							)
+						"
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{ __(projectNaming) }}
+						</div>
+						<DeskSelect v-else v-model="form.naming_mode">
+							<option v-for="m in namingModes" :key="m" :value="m">{{ __(m) }}</option>
+						</DeskSelect>
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection :title="__('Accounting')">
+					<DeskField
+						:label="__('Petty Cash Account')"
+						:hint="
+							__(
+								'The Cash / Bank ledger that petty cash is disbursed into and expenses are paid from. Defaults to the seeded \'Petty Cash\' account; change it to post to a different float.',
+							)
+						"
+					>
+						<div v-if="!editing" class="text-sm text-ink-900 py-1">
+							{{ pettyCashAccount || "—" }}
+						</div>
+						<DeskSelect v-else v-model="form.petty_cash_account">
+							<option value="">{{ __("— None —") }}</option>
+							<option v-for="a in pettyCashOptions" :key="a.name" :value="a.name">
+								{{ a.name }} ({{ a.account_type }})
+							</option>
+						</DeskSelect>
+					</DeskField>
+				</DeskSection>
+
+				<DeskSection v-if="store.isAdmin" :title="__('Role permissions')">
+					<DeskField
+						:label="__('Default permission matrix')"
+						:hint="
+							__(
+								'App updates no longer reset permissions, so any changes you make to BuildSuite role permissions in Desk are preserved across upgrades. Export the current permissions to hand back for aligning the defaults, or restore the shipped defaults to discard local changes.',
+							)
+						"
+					>
+						<div class="flex flex-wrap items-center gap-2 py-1">
+							<button
+								type="button"
+								class="text-xs px-2.5 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 font-medium disabled:opacity-60"
+								style="border-radius: 6px"
+								:disabled="!!permBusy"
+								@click="onExportPermissions"
+							>
+								{{ permBusy === "export" ? __("Exporting…") : __("Export permissions") }}
+							</button>
+							<button
+								type="button"
+								class="text-xs px-2.5 py-1.5 border border-danger-300 bg-danger-50 hover:bg-danger-100 text-danger-700 font-medium disabled:opacity-60"
+								style="border-radius: 6px"
+								:disabled="!!permBusy"
+								@click="onRestoreDefaults"
+							>
+								{{ permBusy === "restore" ? __("Restoring…") : __("Restore defaults") }}
+							</button>
+						</div>
+						<p class="text-[11px] text-warning-700 mt-1.5 flex items-start gap-1">
+							<span aria-hidden="true">⚠</span>
+							<span>{{
+								__(
+									"Restoring overwrites every BuildSuite role permission on this site back to the shipped defaults and cannot be undone.",
+								)
+							}}</span>
+						</p>
+					</DeskField>
+				</DeskSection>
+			</div>
+		</DeskForm>
+	</DeskPage>
+</template>

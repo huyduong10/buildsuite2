@@ -1,0 +1,62 @@
+[pre_model_sync]
+# Patches added in this section will be executed before doctypes are migrated
+# Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+buildsuite_core.patches.rename_estimate_template_project_category
+buildsuite_core.patches.rename_subcontractor_tax_ids
+buildsuite_core.patches.wo_submittable_from_status
+[post_model_sync]
+# Patches added in this section will be executed after doctypes are migrated
+buildsuite_core.patches.recase_buildsuite_module
+buildsuite_core.patches.remove_app_desktop_icon
+buildsuite_core.patches.migrate_task_type_to_native_type
+buildsuite_core.patches.backfill_stage_aggregates
+buildsuite_core.patches.migrate_project_type_to_category
+#buildsuite_core.patches.remove_legacy_project_template_doctypes
+buildsuite_core.patches.repair_default_personas
+buildsuite_core.patches.enforce_persona_backend_only
+buildsuite_core.patches.seed_estimation_catalog # 2026-07-20
+buildsuite_core.patches.split_project_naming_mode_and_series
+buildsuite_core.patches.backfill_boq_sub_item_uom
+buildsuite_core.patches.set_default_rate_master_update_threshold
+buildsuite_core.patches.retire_site_execution_settings
+buildsuite_core.patches.recompute_stage_completed_counts # 2026-08-04
+buildsuite_core.patches.sync_report_filters # 2026-08-04
+
+buildsuite_core.patches.reseed_site_execution_reports # 2026-08-12
+buildsuite_core.patches.rename_petty_cash_entry_type # 2026-08-14
+buildsuite_core.patches.point_delay_analysis_tile_to_route # 2026-08-17
+buildsuite_core.patches.convert_site_execution_reports_to_script # 2026-08-18
+buildsuite_core.patches.reseed_subcontract_reports # 2026-08-18
+buildsuite_core.patches.reseed_project_finance_reports # 2026-08-18
+buildsuite_core.patches.reseed_project_finance_bespoke # 2026-08-20
+buildsuite_core.patches.reseed_project_finance_bespoke_views # 2026-08-20
+buildsuite_core.patches.fix_stage_planning_workflow_roles # 2026-08-20
+buildsuite_core.patches.reseed_procurement_bespoke_reports # 2026-08-20
+buildsuite_core.patches.grant_child_table_read_access # 2026-08-21
+buildsuite_core.patches.resync_director_permission_matrix # 2026-08-24
+buildsuite_core.patches.repoint_pnl_to_bespoke # 2026-08-25
+buildsuite_core.patches.resync_picker_select_permissions
+buildsuite_core.patches.backfill_persona_roles # 2026-09-01
+buildsuite_core.patches.resync_mobile_permissions # 2026-09-03 mobile app perms
+buildsuite_core.patches.strip_read_mirror_overreach # 2026-09-03 scope persona ERPNext footprint
+buildsuite_core.patches.resync_derived_attendance_perms # 2026-09-04 derived registers read-only
+buildsuite_core.patches.drop_manager_employee_user_permissions # 2026-09-04 roster mgrs see all employees
+buildsuite_core.patches.fix_stage_planning_name_column # 2026-09-04 stage planning name column int->varchar
+buildsuite_core.patches.resync_persona_permission_matrix # 2026-09-05 converge stale imported-site perms
+buildsuite_core.patches.restore_transaction_doctype_naming # 2026-09-05 bill/MB naming import override
+buildsuite_core.patches.restore_subcontractor_work_order_naming # 2026-09-05 WO naming import override
+buildsuite_core.patches.promote_persona_users_to_system_user # 2026-09-06 persona users are system users
+buildsuite_core.patches.backfill_field_attendance_employees_count # 2026-09-06 ISS-167 list count
+buildsuite_core.patches.add_subcontract_client_ledger_variance_reports # 2026-09-09 client bill / sub ledger / cost code variance tiles
+buildsuite_core.patches.seed_workforce_report_tiles # 2026-09-09 workforce report tiles to Workspace Setting
+buildsuite_core.patches.backfill_company_scope # 2026-09-09 multi-company
+buildsuite_core.patches.backfill_master_company # 2026-09-09 supplier/customer/item company
+buildsuite_core.patches.rebuild_company_letter_heads # 2026-09-10 per-company letter heads
+buildsuite_core.patches.seed_workspace_registry # 2026-09-15 backend workspace registry (sidebar visibility)
+buildsuite_core.patches.seed_workspace_shortcuts # 2026-09-15 workspace shortcut registry
+buildsuite_core.patches.drop_party_company_field # 2026-09-19 Supplier/Customer are global ERPNext parties
+buildsuite_core.patches.rebaseline_report_role_matrix # 2026-09-23 re-baseline report roles to access matrix
+buildsuite_core.patches.tile_rate_check_in_estimation # 2026-09-24 rate-check also an Estimation tile
+buildsuite_core.patches.seed_project_settings # 2026-09-24 seed the project page-tab template
+buildsuite_core.patches.scope_petty_cash_expense_visibility # 2026-10-07
+buildsuite_core.patches.restore_petty_cash_expense_owner_to_creator # 2026-10-07

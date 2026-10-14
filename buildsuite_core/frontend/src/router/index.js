@@ -1,0 +1,1324 @@
+import { createRouter, createWebHistory } from "vue-router";
+import { useSessionStore } from "@/stores/session";
+import { useDataStore } from "@/stores";
+import { usePermissions } from "@/composables/usePermissions";
+import { getDoctypePermissions } from "@/data/workspaceSettingApi";
+import { getLoginUrl } from "@/utils/session";
+import { APP_ROUTE, APP_TITLE } from "@/utils/appRoute";
+
+// Per-route browser title (route name -> human label). Detail pages get a generic
+// label here; the view overrides it with the record name via usePageTitle.
+const PAGE_TITLES = {
+	"app-home": "Home",
+	dashboard: "Dashboard",
+	todo: "To-dos",
+	"todo-detail": "To-do",
+	notifications: "Notifications",
+	"notification-detail": "Notification",
+	projects: "Projects",
+	"project-new": "New Project",
+	"project-detail": "Project",
+	"project-progress-report": "Progress Report",
+	"work-packages": "Work Packages",
+	"wp-new": "New Work Package",
+	"wp-detail": "Work Package",
+	tasks: "Tasks",
+	"task-new": "New Task",
+	"task-detail": "Task",
+	"stage-plannings": "Stage Planning",
+	"stage-planning-new": "New Stage",
+	"stage-planning-detail": "Stage Planning",
+	"stage-planning-review": "Stage Review",
+	"progress-entries": "Task Progress Entries",
+	"progress-entry-new": "New Progress Entry",
+	"progress-entry-detail": "Task Progress Entry",
+	schedule: "Schedule",
+	sco: "Scope Change Orders",
+	"sco-new": "Raise Scope Change Order",
+	"sco-detail": "Scope Change Order",
+	boq: "Bill of Quantities",
+	"boq-detail": "BOQ",
+	tenders: "Tenders",
+	"tender-new": "New Tender",
+	"tender-detail": "Tender",
+	"tender-edit": "Edit Tender",
+	quotations: "Quotations",
+	"quotation-new": "New Quotation",
+	"quotation-detail": "Quotation",
+	"quotation-edit": "Edit Quotation",
+	"rate-master": "Rate Master",
+	"rate-master-detail": "Rate Master",
+	assembly: "Assemblies",
+	"assembly-new": "New Assembly",
+	"assembly-detail": "Assembly",
+	"site-execution": "Site Execution",
+	"project-dashboard": "Project Dashboard",
+	"report-stub": "Report",
+	"report-delay-analysis": "Delay Analysis",
+	estimation: "Estimation",
+	procurement: "Procurement",
+	"procurement-dashboard": "Procurement Dashboard",
+	items: "Items",
+	"material-consumption": "Material Consumption",
+	"material-consumption-new": "Record Consumption",
+	"material-consumption-detail": "Material Consumption",
+	"material-consumption-edit": "Edit Consumption",
+	equipment: "Equipment",
+	"equipment-dashboard": "Equipment Dashboard",
+	machinery: "Machinery",
+	"machinery-new": "New Machinery",
+	"machinery-detail": "Machinery",
+	"machinery-usage": "Machinery Usage",
+	"machinery-usage-new": "Log Machinery Usage",
+	"machinery-usage-detail": "Machinery Usage",
+	subcontract: "Subcontract",
+	"subcontract-dashboard": "Subcontractor Dashboard",
+	subcontractors: "Subcontractors",
+	"subcontractor-new": "New Subcontractor",
+	"subcontractor-detail": "Subcontractor",
+	"subcontractor-work-orders": "Work Orders",
+	"subcontractor-work-order-new": "New Work Order",
+	"subcontractor-work-order-detail": "Work Order",
+	"subcontractor-work-order-edit": "Edit Work Order",
+	"measurement-books": "Measurement Books",
+	"measurement-book-new": "New Measurement Book",
+	"measurement-book-detail": "Measurement Book",
+	"measurement-book-edit": "Edit Measurement Book",
+	"subcontractor-bills": "Subcontractor Bills",
+	"subcontractor-bill-new": "New Subcontractor Bill",
+	"subcontractor-bill-detail": "Subcontractor Bill",
+	"subcontractor-bill-edit": "Edit Subcontractor Bill",
+	workforce: "Workforce",
+	"field-employees": "Field Employees",
+	"field-employee-new": "New Field Employee",
+	"field-employee-detail": "Field Employee",
+	crews: "Crews",
+	"crew-new": "New Crew",
+	"crew-detail": "Crew",
+	"field-attendance": "Field Attendance",
+	"field-attendance-new": "New Field Attendance",
+	"field-attendance-detail": "Field Attendance",
+	"labour-attendance": "Labour Attendance Register",
+	"overtime-attendance": "Overtime Attendance Register",
+	"attendance-summary": "Site Attendance Summary",
+	"scope-change": "Scope Change",
+	"project-finance": "Project Finance",
+	"petty-cash": "Petty Cash",
+	accounting: "Accounting",
+	buying: "Buying",
+	stock: "Stock",
+	assets: "Assets",
+	hr: "HR",
+	subcontractor: "Subcontractor",
+	labour: "Labour",
+	financials: "Financials",
+	reports: "Reports",
+	settings: "Settings",
+	"settings-companies": "Companies",
+	"settings-company-new": "New Company",
+	"settings-company-detail": "Company",
+	"settings-users": "Users",
+	"settings-user-new": "New User",
+	"settings-data": "Data Tools",
+	"settings-core": "Core Settings",
+	"settings-workspaces": "Workspace Setting",
+	"settings-workspace-structure": "Workspace Structure",
+	"settings-project-categories": "Project Categories",
+	"settings-project-category-new": "New Project Category",
+	"settings-project-category-detail": "Project Category",
+	"settings-project-category-template": "Project Template",
+	"settings-personas": "Personas",
+	"settings-persona-new": "New Persona",
+	"settings-persona-detail": "Persona",
+	forbidden: "Access Denied",
+	"not-found": "Not Found",
+};
+
+const routes = [
+	{
+		path: "/",
+		component: () => import("@/layouts/DeskShell.vue"),
+		children: [
+			{ path: "", redirect: "/home" },
+			{ path: "home", name: "app-home", component: () => import("@/views/AppHomeView.vue") },
+			{
+				path: "dashboard",
+				name: "dashboard",
+				component: () => import("@/views/DashboardView.vue"),
+			},
+			{
+				path: "projects",
+				name: "projects",
+				component: () => import("@/views/ProjectsView.vue"),
+			},
+			{
+				path: "projects/new",
+				name: "project-new",
+				component: () => import("@/views/NewProjectView.vue"),
+			},
+			{
+				path: "projects/:id",
+				name: "project-detail",
+				component: () => import("@/views/ProjectDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "projects/:id/progress-report",
+				name: "project-progress-report",
+				component: () => import("@/views/ProgressReportView.vue"),
+				props: true,
+			},
+			{
+				path: "work-packages",
+				name: "work-packages",
+				component: () => import("@/views/WorkPackagesView.vue"),
+			},
+			{
+				path: "work-packages/new",
+				name: "wp-new",
+				component: () => import("@/views/NewWorkPackageView.vue"),
+			},
+			{
+				path: "work-packages/:id",
+				name: "wp-detail",
+				component: () => import("@/views/WorkPackageDetailView.vue"),
+				props: true,
+			},
+			{ path: "tasks", name: "tasks", component: () => import("@/views/TasksView.vue") },
+			{ path: "todo", name: "todo", component: () => import("@/views/TodosView.vue") },
+			{
+				path: "todo/:id",
+				name: "todo-detail",
+				component: () => import("@/views/TodoDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "notifications",
+				name: "notifications",
+				component: () => import("@/views/NotificationsListView.vue"),
+			},
+			{
+				path: "notifications/:id",
+				name: "notification-detail",
+				component: () => import("@/views/NotificationDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "tasks/new",
+				name: "task-new",
+				component: () => import("@/views/NewTaskView.vue"),
+			},
+			{
+				path: "tasks/:id",
+				name: "task-detail",
+				component: () => import("@/views/TaskDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "stage-plannings",
+				name: "stage-plannings",
+				component: () => import("@/views/StagePlanningsView.vue"),
+			},
+			{
+				path: "stage-plannings/new",
+				name: "stage-planning-new",
+				component: () => import("@/views/NewStagePlanningView.vue"),
+			},
+			{
+				path: "stage-plannings/:id",
+				name: "stage-planning-detail",
+				component: () => import("@/views/StagePlanningDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "stage-plannings/:id/review",
+				name: "stage-planning-review",
+				component: () => import("@/views/StageReviewView.vue"),
+				props: true,
+			},
+			{
+				path: "progress-entries",
+				name: "progress-entries",
+				component: () => import("@/views/TaskProgressEntriesView.vue"),
+			},
+			{
+				path: "progress-entries/new",
+				name: "progress-entry-new",
+				component: () => import("@/views/NewTaskProgressEntryView.vue"),
+			},
+			{
+				path: "progress-entries/:id",
+				name: "progress-entry-detail",
+				component: () => import("@/views/TaskProgressEntryDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "schedule",
+				name: "schedule",
+				component: () => import("@/views/ScheduleView.vue"),
+			},
+			{ path: "sco", name: "sco", component: () => import("@/views/ScoView.vue") },
+			{
+				path: "sco/new",
+				name: "sco-new",
+				component: () => import("@/views/NewScoView.vue"),
+			},
+			{
+				path: "sco/:id",
+				name: "sco-detail",
+				component: () => import("@/views/ScoDetailView.vue"),
+				props: true,
+			},
+			{ path: "boq", name: "boq", component: () => import("@/views/BoqView.vue") },
+			{
+				path: "boq/:id",
+				name: "boq-detail",
+				component: () => import("@/views/BoqDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "tenders",
+				name: "tenders",
+				component: () => import("@/views/TendersListView.vue"),
+			},
+			{
+				path: "tenders/new",
+				name: "tender-new",
+				component: () => import("@/views/NewTenderView.vue"),
+			},
+			{
+				path: "tenders/:id/edit",
+				name: "tender-edit",
+				component: () => import("@/views/NewTenderView.vue"),
+				props: true,
+			},
+			{
+				path: "tenders/:id",
+				name: "tender-detail",
+				component: () => import("@/views/TenderDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "quotations",
+				name: "quotations",
+				component: () => import("@/views/QuotationsListView.vue"),
+			},
+			{
+				path: "quotations/new",
+				name: "quotation-new",
+				component: () => import("@/views/NewQuotationView.vue"),
+			},
+			{
+				path: "quotations/:id/edit",
+				name: "quotation-edit",
+				component: () => import("@/views/NewQuotationView.vue"),
+				props: true,
+			},
+			{
+				path: "quotations/:id/print",
+				name: "quotation-print",
+				component: () => import("@/views/QuotationPrintView.vue"),
+				props: true,
+			},
+			{
+				path: "quotations/:id",
+				name: "quotation-detail",
+				component: () => import("@/views/QuotationDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "rate-master",
+				name: "rate-master",
+				component: () => import("@/views/RateMasterView.vue"),
+			},
+			{
+				path: "rate-master/:id",
+				name: "rate-master-detail",
+				component: () => import("@/views/RateMasterView.vue"),
+				props: true,
+			},
+			{
+				path: "assembly",
+				name: "assembly",
+				component: () => import("@/views/AssembliesView.vue"),
+			},
+			{
+				path: "assembly/new",
+				name: "assembly-new",
+				component: () => import("@/views/NewAssemblyView.vue"),
+			},
+			{
+				path: "assembly/:id",
+				name: "assembly-detail",
+				component: () => import("@/views/AssemblyDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "estimate-template",
+				name: "estimate-template",
+				component: () => import("@/views/EstimateTemplatesView.vue"),
+			},
+			{
+				path: "estimate-template/new",
+				name: "estimate-template-new",
+				component: () => import("@/views/NewEstimateTemplateView.vue"),
+			},
+			{
+				path: "estimate-template/:id",
+				name: "estimate-template-detail",
+				component: () => import("@/views/EstimateTemplateDetailView.vue"),
+				props: true,
+			},
+
+			{
+				path: "site-execution",
+				name: "site-execution",
+				meta: { workspace: "site-execution" },
+				component: () => import("@/views/workspaces/SiteExecutionWorkspace.vue"),
+			},
+			{
+				path: "project-dashboard",
+				name: "project-dashboard",
+				component: () => import("@/views/workspaces/ProjectDashboardView.vue"),
+			},
+			{
+				// Insights — ask-a-question reporting. Leadership-gated in the view.
+				path: "insights",
+				name: "insights",
+				component: () => import("@/views/InsightsView.vue"),
+			},
+			{
+				path: "reports/view/:report",
+				name: "report-view",
+				component: () => import("@/views/ReportView.vue"),
+				props: true,
+			},
+			{
+				// Bespoke Site Execution report — its own route so the Workspace Setting tile
+				// points at a plain URL rather than a Query Report the flat renderer can't express.
+				path: "reports/delay-analysis",
+				name: "report-delay-analysis",
+				component: () => import("@/views/DelayAnalysisReportView.vue"),
+			},
+			{
+				// Bespoke project cost-control report — Planned/Committed/Actual/Variance per BOQ
+				// cost code. Launched from the project overview with ?project=<id>.
+				path: "reports/cost-vs-budget",
+				name: "report-cost-vs-budget",
+				component: () => import("@/views/CostVsBudgetReportView.vue"),
+			},
+			{
+				path: "reports/:slug",
+				name: "report-stub",
+				component: () => import("@/views/workspaces/ReportStubView.vue"),
+				props: true,
+			},
+			{
+				path: "estimation",
+				name: "estimation",
+				meta: { workspace: "estimation" },
+				component: () => import("@/views/workspaces/EstimationWorkspace.vue"),
+			},
+			{
+				path: "procurement",
+				name: "procurement",
+				meta: { workspace: "procurement" },
+				component: () => import("@/views/workspaces/ProcurementWorkspace.vue"),
+			},
+			{
+				path: "procurement-dashboard",
+				name: "procurement-dashboard",
+				component: () => import("@/views/workspaces/ProcurementDashboardView.vue"),
+			},
+			{
+				path: "procurement/material-requests",
+				name: "material-requests",
+				component: () => import("@/views/procurement/MaterialRequestsListView.vue"),
+			},
+			{
+				path: "procurement/material-requests/new",
+				name: "material-request-new",
+				component: () => import("@/views/procurement/NewMaterialRequestView.vue"),
+			},
+			{
+				path: "procurement/material-requests/:id",
+				name: "material-request-detail",
+				component: () => import("@/views/procurement/MaterialRequestDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/material-requests/:id/edit",
+				name: "material-request-edit",
+				component: () => import("@/views/procurement/NewMaterialRequestView.vue"),
+			},
+			{
+				path: "records/:doctype/new",
+				name: "record-new",
+				component: () => import("@/views/records/DocTypeRecordFormView.vue"),
+				props: true,
+			},
+			{
+				path: "records/:doctype/:name",
+				name: "record-edit",
+				component: () => import("@/views/records/DocTypeRecordFormView.vue"),
+				props: true,
+			},
+			{
+				path: "records/:doctype",
+				name: "records-list",
+				component: () => import("@/views/records/DocTypeRecordsListView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/purchase-orders",
+				name: "purchase-orders",
+				component: () => import("@/views/procurement/PurchaseOrdersListView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders/new",
+				name: "purchase-order-new",
+				component: () => import("@/views/procurement/NewPurchaseOrderView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders/:id",
+				name: "purchase-order-detail",
+				component: () => import("@/views/procurement/PurchaseOrderDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/purchase-orders/:id/edit",
+				name: "purchase-order-edit",
+				component: () => import("@/views/procurement/NewPurchaseOrderView.vue"),
+			},
+			{
+				path: "procurement/purchase-orders/:id/print",
+				name: "purchase-order-print",
+				component: () => import("@/views/procurement/PurchaseOrderPrintView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/receipts",
+				name: "purchase-receipts",
+				component: () => import("@/views/procurement/PurchaseReceiptsListView.vue"),
+			},
+			{
+				path: "procurement/receipts/new",
+				name: "purchase-receipt-new",
+				component: () => import("@/views/procurement/NewPurchaseReceiptView.vue"),
+			},
+			{
+				path: "procurement/receipts/:id",
+				name: "purchase-receipt-detail",
+				component: () => import("@/views/procurement/PurchaseReceiptDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/receipts/:id/edit",
+				name: "purchase-receipt-edit",
+				component: () => import("@/views/procurement/NewPurchaseReceiptView.vue"),
+			},
+			{
+				path: "items",
+				name: "items",
+				component: () => import("@/views/ItemsListView.vue"),
+			},
+			{
+				path: "material-consumption",
+				name: "material-consumption",
+				component: () => import("@/views/ConsumptionListView.vue"),
+			},
+			// `new` must stay above `:id`, or it is read as a record id.
+			{
+				path: "material-consumption/new",
+				name: "material-consumption-new",
+				component: () => import("@/views/NewConsumptionView.vue"),
+			},
+			{
+				path: "material-consumption/:id/edit",
+				name: "material-consumption-edit",
+				component: () => import("@/views/NewConsumptionView.vue"),
+				props: true,
+			},
+			{
+				path: "material-consumption/:id",
+				name: "material-consumption-detail",
+				component: () => import("@/views/ConsumptionDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "equipment",
+				name: "equipment",
+				meta: { workspace: "equipment" },
+				component: () => import("@/views/workspaces/EquipmentWorkspace.vue"),
+			},
+			{
+				path: "equipment-dashboard",
+				name: "equipment-dashboard",
+				component: () => import("@/views/workspaces/EquipmentDashboardView.vue"),
+			},
+			{
+				path: "machinery",
+				name: "machinery",
+				component: () => import("@/views/MachineryListView.vue"),
+			},
+			{
+				path: "machinery/new",
+				name: "machinery-new",
+				component: () => import("@/views/NewMachineryView.vue"),
+			},
+			{
+				path: "machinery/:id",
+				name: "machinery-detail",
+				component: () => import("@/views/MachineryDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "machinery-usage",
+				name: "machinery-usage",
+				component: () => import("@/views/MachineryUsageListView.vue"),
+			},
+			{
+				path: "machinery-usage/new",
+				name: "machinery-usage-new",
+				component: () => import("@/views/NewMachineryUsageView.vue"),
+			},
+			{
+				path: "machinery-usage/:id",
+				name: "machinery-usage-detail",
+				component: () => import("@/views/MachineryUsageDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontract",
+				name: "subcontract",
+				meta: { workspace: "subcontract" },
+				component: () => import("@/views/workspaces/SubcontractWorkspace.vue"),
+			},
+			{
+				path: "subcontract-dashboard",
+				name: "subcontract-dashboard",
+				component: () => import("@/views/workspaces/SubcontractorDashboardView.vue"),
+			},
+			{
+				path: "subcontractors",
+				name: "subcontractors",
+				component: () => import("@/views/SubcontractorsListView.vue"),
+			},
+			{
+				path: "subcontractors/new",
+				name: "subcontractor-new",
+				component: () => import("@/views/NewSubcontractorView.vue"),
+			},
+			{
+				path: "subcontractors/:id",
+				name: "subcontractor-detail",
+				component: () => import("@/views/SubcontractorDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontractor-work-orders",
+				name: "subcontractor-work-orders",
+				component: () => import("@/views/SubcontractorWorkOrdersListView.vue"),
+			},
+			{
+				path: "subcontractor-work-orders/new",
+				name: "subcontractor-work-order-new",
+				component: () => import("@/views/NewSubcontractorWorkOrderView.vue"),
+			},
+			// The Work Order name can carry slashes on imported sites (e.g. CNBC/1069/24/07/2026),
+			// so the `id` param must match across "/". The /edit and /print routes come first (their
+			// trailing static segment makes them win); the bare detail route is the greedy fallback.
+			{
+				path: "subcontractor-work-orders/:id(.*)/edit",
+				name: "subcontractor-work-order-edit",
+				component: () => import("@/views/NewSubcontractorWorkOrderView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontractor-work-orders/:id(.*)/print",
+				name: "subcontractor-work-order-print",
+				component: () => import("@/views/SubcontractorWorkOrderPrintView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontractor-work-orders/:id(.*)",
+				name: "subcontractor-work-order-detail",
+				component: () => import("@/views/SubcontractorWorkOrderDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "measurement-books",
+				name: "measurement-books",
+				component: () => import("@/views/MeasurementBooksListView.vue"),
+			},
+			{
+				path: "measurement-books/new",
+				name: "measurement-book-new",
+				component: () => import("@/views/NewMeasurementBookView.vue"),
+			},
+			{
+				path: "measurement-books/:id",
+				name: "measurement-book-detail",
+				component: () => import("@/views/MeasurementBookDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "measurement-books/:id/edit",
+				name: "measurement-book-edit",
+				component: () => import("@/views/NewMeasurementBookView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontractor-bills",
+				name: "subcontractor-bills",
+				component: () => import("@/views/SubcontractorBillsListView.vue"),
+			},
+			{
+				path: "subcontractor-bills/new",
+				name: "subcontractor-bill-new",
+				component: () => import("@/views/NewSubcontractorBillView.vue"),
+			},
+			{
+				path: "subcontractor-bills/:id",
+				name: "subcontractor-bill-detail",
+				component: () => import("@/views/SubcontractorBillDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "subcontractor-bills/:id/edit",
+				name: "subcontractor-bill-edit",
+				component: () => import("@/views/NewSubcontractorBillView.vue"),
+				props: true,
+			},
+			{
+				path: "workforce",
+				name: "workforce",
+				meta: { workspace: "workforce" },
+				component: () => import("@/views/workspaces/WorkforceWorkspace.vue"),
+			},
+			{
+				path: "field-employees",
+				name: "field-employees",
+				component: () => import("@/views/FieldEmployeesListView.vue"),
+			},
+			{
+				path: "field-employees/new",
+				name: "field-employee-new",
+				component: () => import("@/views/NewFieldEmployeeView.vue"),
+			},
+			{
+				path: "field-employees/:id",
+				name: "field-employee-detail",
+				component: () => import("@/views/FieldEmployeeDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "crews",
+				name: "crews",
+				component: () => import("@/views/CrewsListView.vue"),
+			},
+			{
+				path: "crews/new",
+				name: "crew-new",
+				component: () => import("@/views/NewCrewView.vue"),
+			},
+			{
+				path: "crews/:id",
+				name: "crew-detail",
+				component: () => import("@/views/CrewDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "field-attendance",
+				name: "field-attendance",
+				component: () => import("@/views/FieldAttendanceListView.vue"),
+			},
+			{
+				path: "field-attendance/new",
+				name: "field-attendance-new",
+				component: () => import("@/views/NewFieldAttendanceView.vue"),
+			},
+			{
+				path: "field-attendance/:id",
+				name: "field-attendance-detail",
+				component: () => import("@/views/FieldAttendanceDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "labour-attendance",
+				name: "labour-attendance",
+				component: () => import("@/views/LabourAttendanceListView.vue"),
+			},
+			{
+				path: "overtime-attendance",
+				name: "overtime-attendance",
+				component: () => import("@/views/OvertimeAttendanceListView.vue"),
+			},
+			{
+				path: "workforce/attendance-summary",
+				name: "attendance-summary",
+				component: () => import("@/views/workforce/AttendanceSummaryReport.vue"),
+			},
+			{
+				path: "scope-change",
+				name: "scope-change",
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "Scope Change",
+					icon: "🔁",
+					desc: "Scope change orders live under Site Execution.",
+					links: [
+						{
+							label: "Site Execution",
+							to: "/site-execution",
+							icon: "🏗️",
+							desc: "Go to the workspace where SCOs now live",
+						},
+						{
+							label: "Scope Change Orders",
+							to: "/sco",
+							icon: "🔁",
+							desc: "Direct link to the SCO register",
+						},
+					],
+				},
+			},
+			{
+				path: "project-finance",
+				name: "project-finance",
+				meta: { workspace: "project-finance" },
+				component: () => import("@/views/workspaces/ProjectFinanceWorkspace.vue"),
+			},
+			{
+				path: "project-finance/petty-cash",
+				name: "petty-cash",
+				component: () => import("@/views/finance/FinancePettyCashPanel.vue"),
+			},
+			{
+				path: "project-finance/invoices/new",
+				name: "finance-invoice-new",
+				component: () => import("@/views/finance/FinanceInvoiceFormView.vue"),
+			},
+			{
+				path: "project-finance/invoices/:id/edit",
+				name: "finance-invoice-edit",
+				component: () => import("@/views/finance/FinanceInvoiceFormView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/invoices/:id",
+				name: "finance-invoice",
+				component: () => import("@/views/finance/FinanceInvoiceDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/invoices/:id/print",
+				name: "finance-invoice-print",
+				component: () => import("@/views/finance/FinanceInvoicePrintView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/supplier-bills/new",
+				name: "finance-supplier-bill-new",
+				component: () => import("@/views/finance/FinanceSupplierBillFormView.vue"),
+			},
+			{
+				path: "project-finance/supplier-bills/:id/edit",
+				name: "finance-supplier-bill-edit",
+				component: () => import("@/views/finance/FinanceSupplierBillFormView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/supplier-bills/:id",
+				name: "finance-supplier-bill",
+				component: () => import("@/views/finance/FinanceSupplierBillDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "procurement/report/:slug",
+				name: "procurement-report",
+				component: () => import("@/views/procurement/reports/ProcurementReportView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/report/:slug",
+				name: "finance-report",
+				component: () => import("@/views/finance/FinanceReportPageView.vue"),
+				props: true,
+			},
+			{
+				path: "project-finance/:section",
+				name: "finance-section",
+				component: () => import("@/views/finance/FinancePageView.vue"),
+				props: true,
+			},
+
+			{
+				path: "accounting",
+				name: "accounting",
+				meta: { workspace: "accounting" },
+				component: () => import("@/views/workspaces/AccountingWorkspace.vue"),
+			},
+			{
+				path: "buying",
+				name: "buying",
+				meta: { workspace: "buying" },
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "Buying",
+					icon: "📥",
+					desc: "Suppliers, purchase orders and request-for-quotation flows.",
+				},
+			},
+			{
+				path: "stock",
+				name: "stock",
+				meta: { workspace: "stock" },
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "Stock",
+					icon: "📦",
+					desc: "Items, stock entries, warehouses and inventory.",
+				},
+			},
+			{
+				path: "assets",
+				name: "assets",
+				meta: { workspace: "assets" },
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "Assets",
+					icon: "🏭",
+					desc: "Plant, machinery and asset register.",
+				},
+			},
+			{
+				path: "hr",
+				name: "hr",
+				meta: { workspace: "hr" },
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "HR",
+					icon: "👤",
+					desc: "Office staff records, leaves and salary.",
+				},
+			},
+
+			{
+				path: "subcontractor",
+				name: "subcontractor",
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "Subcontractor",
+					icon: "🤝",
+					desc: "Vendors, RA Bills, retention, payments.",
+				},
+			},
+			{
+				path: "labour",
+				name: "labour",
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: { title: "Labour", icon: "👷", desc: "Attendance and overtime." },
+			},
+			{
+				path: "financials",
+				name: "financials",
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: {
+					title: "Financials",
+					icon: "💵",
+					desc: "Petty cash, cost summary, variance reports.",
+				},
+			},
+			{
+				path: "reports",
+				name: "reports",
+				component: () => import("@/views/PlaceholderView.vue"),
+				props: { title: "Reports", icon: "📑", desc: "Project intelligence reports." },
+			},
+
+			{
+				path: "settings",
+				name: "settings",
+				component: () => import("@/views/settings/SettingsHubView.vue"),
+			},
+			{
+				path: "settings/companies",
+				name: "settings-companies",
+				component: () => import("@/views/settings/CompaniesView.vue"),
+			},
+			{
+				path: "settings/companies/new",
+				name: "settings-company-new",
+				component: () => import("@/views/settings/NewCompanyView.vue"),
+			},
+			{
+				path: "settings/companies/:id",
+				name: "settings-company-detail",
+				component: () => import("@/views/settings/CompanyDetailView.vue"),
+				props: true,
+			},
+			{
+				path: "settings/users",
+				name: "settings-users",
+				component: () => import("@/views/settings/UsersView.vue"),
+			},
+			{
+				path: "settings/users/new",
+				name: "settings-user-new",
+				component: () => import("@/views/settings/NewUserView.vue"),
+			},
+			{
+				path: "settings/data",
+				name: "settings-data",
+				component: () => import("@/views/settings/DataToolsView.vue"),
+			},
+			{
+				path: "settings/core",
+				name: "settings-core",
+				component: () => import("@/views/settings/CoreSettingsView.vue"),
+			},
+			{
+				path: "settings/project",
+				name: "settings-project",
+				component: () => import("@/views/settings/ProjectSettingsView.vue"),
+			},
+			{
+				path: "settings/finance-accounts",
+				name: "settings-finance-accounts",
+				component: () => import("@/views/settings/FinanceAccountsView.vue"),
+			},
+			{
+				path: "settings/workspaces",
+				name: "settings-workspaces",
+				component: () => import("@/views/settings/WorkspaceSettingsView.vue"),
+				meta: { requiresAdmin: true },
+			},
+			// Legacy redirect — Site Execution Settings became the tabbed Workspace Setting.
+			{
+				path: "settings/site-execution",
+				redirect: "/settings/workspaces",
+			},
+			{
+				path: "settings/workspace-structure",
+				name: "settings-workspace-structure",
+				component: () => import("@/views/settings/WorkspaceStructureView.vue"),
+			},
+			{
+				path: "settings/project-categories",
+				name: "settings-project-categories",
+				component: () => import("@/views/settings/ProjectCategoriesView.vue"),
+				meta: { requiresAdmin: true },
+			},
+			{
+				path: "settings/project-categories/new",
+				name: "settings-project-category-new",
+				component: () => import("@/views/settings/NewProjectCategoryView.vue"),
+				meta: { requiresAdmin: true },
+			},
+			{
+				path: "settings/project-categories/:id",
+				name: "settings-project-category-detail",
+				component: () => import("@/views/settings/ProjectCategoryDetailView.vue"),
+				meta: { requiresAdmin: true },
+				props: true,
+			},
+			{
+				path: "settings/project-categories/:id/template",
+				name: "settings-project-category-template",
+				component: () => import("@/views/settings/ProjectTemplateEditorView.vue"),
+				meta: { requiresAdmin: true },
+				props: true,
+			},
+			{
+				path: "settings/personas",
+				name: "settings-personas",
+				component: () => import("@/views/settings/PersonasView.vue"),
+				meta: { requiresAdmin: true },
+			},
+			{
+				path: "settings/personas/new",
+				name: "settings-persona-new",
+				component: () => import("@/views/settings/NewPersonaView.vue"),
+				meta: { requiresAdmin: true },
+			},
+			{
+				path: "settings/personas/:id",
+				name: "settings-persona-detail",
+				component: () => import("@/views/settings/PersonaDetailView.vue"),
+				meta: { requiresAdmin: true },
+				props: true,
+			},
+		],
+	},
+	{
+		path: "/forbidden",
+		name: "forbidden",
+		component: () => import("@/views/AccessDeniedView.vue"),
+		props: (route) => ({
+			reason: route.query.reason || "missing_role",
+			target: route.query.target || "/home",
+		}),
+	},
+	// A component, not a redirect, so the mistyped URL stays visible.
+	{
+		path: "/:pathMatch(.*)*",
+		name: "not-found",
+		component: () => import("@/views/NotFoundView.vue"),
+	},
+];
+
+// Resource-cap gating for DEEP LINKS. Maps a route name to the resource key
+// (permissions/resource_map.py) whose backend caps gate it. The action is inferred
+// from the route's intent — `*-new` needs create, `*-edit` needs edit, everything
+// else needs read — so a create/edit form opened by URL without permission redirects
+// away instead of rendering a form the backend would refuse to save. This closes the
+// last gap: list/detail entry points are already hidden by usePermissions, but the
+// forms themselves were reachable by hand-typed URL. Backend perms remain the real
+// gate; this is a UX guard, not enforcement. Report pages / generic record browser
+// (record-*) are intentionally omitted — they aren't statically mappable to one key.
+const ROUTE_CAPS = {
+	// Site execution
+	projects: "project",
+	"project-new": "project",
+	"project-detail": "project",
+	"project-progress-report": "project",
+	"work-packages": "workPackage",
+	"wp-new": "workPackage",
+	"wp-detail": "workPackage",
+	tasks: "task",
+	"task-new": "task",
+	"task-detail": "task",
+	"stage-plannings": "stagePlanning",
+	"stage-planning-new": "stagePlanning",
+	"stage-planning-detail": "stagePlanning",
+	"stage-planning-review": "stagePlanning",
+	"progress-entries": "taskProgressEntry",
+	"progress-entry-new": "taskProgressEntry",
+	"progress-entry-detail": "taskProgressEntry",
+	sco: "sco",
+	"sco-new": "sco",
+	"sco-detail": "sco",
+	// Estimation
+	boq: "boq",
+	"boq-detail": "boq",
+	"rate-master": "rateMaster",
+	"rate-master-detail": "rateMaster",
+	assembly: "assembly",
+	"assembly-new": "assembly",
+	"assembly-detail": "assembly",
+	"estimate-template": "estimateTemplate",
+	"estimate-template-new": "estimateTemplate",
+	"estimate-template-detail": "estimateTemplate",
+	// Procurement
+	"material-requests": "materialRequest",
+	"material-request-new": "materialRequest",
+	"material-request-detail": "materialRequest",
+	"material-request-edit": "materialRequest",
+	"purchase-orders": "purchaseOrder",
+	"purchase-order-new": "purchaseOrder",
+	"purchase-order-detail": "purchaseOrder",
+	"purchase-order-edit": "purchaseOrder",
+	"purchase-order-print": "purchaseOrder",
+	"purchase-receipts": "purchaseReceipt",
+	"purchase-receipt-new": "purchaseReceipt",
+	"purchase-receipt-detail": "purchaseReceipt",
+	"purchase-receipt-edit": "purchaseReceipt",
+	items: "item",
+	"material-consumption": "materialConsumption",
+	"material-consumption-new": "materialConsumption",
+	"material-consumption-edit": "materialConsumption",
+	"material-consumption-detail": "materialConsumption",
+	// Equipment
+	machinery: "machinery",
+	"machinery-new": "machinery",
+	"machinery-detail": "machinery",
+	"machinery-usage": "machineryUsage",
+	"machinery-usage-new": "machineryUsage",
+	"machinery-usage-detail": "machineryUsage",
+	// Subcontract
+	subcontractors: "subcontractor",
+	"subcontractor-new": "subcontractor",
+	"subcontractor-detail": "subcontractor",
+	"subcontractor-work-orders": "subcontractorWorkOrder",
+	"subcontractor-work-order-new": "subcontractorWorkOrder",
+	"subcontractor-work-order-detail": "subcontractorWorkOrder",
+	"subcontractor-work-order-edit": "subcontractorWorkOrder",
+	"subcontractor-work-order-print": "subcontractorWorkOrder",
+	"measurement-books": "measurementBook",
+	"measurement-book-new": "measurementBook",
+	"measurement-book-detail": "measurementBook",
+	"measurement-book-edit": "measurementBook",
+	"subcontractor-bills": "subcontractorBill",
+	"subcontractor-bill-new": "subcontractorBill",
+	"subcontractor-bill-detail": "subcontractorBill",
+	"subcontractor-bill-edit": "subcontractorBill",
+	// Workforce
+	"field-employees": "fieldEmployee",
+	"field-employee-new": "fieldEmployee",
+	"field-employee-detail": "fieldEmployee",
+	crews: "crew",
+	"crew-new": "crew",
+	"crew-detail": "crew",
+	"field-attendance": "fieldAttendance",
+	"field-attendance-new": "fieldAttendance",
+	"field-attendance-detail": "fieldAttendance",
+	"labour-attendance": "fieldAttendance",
+	"overtime-attendance": "fieldAttendance",
+	"attendance-summary": "fieldAttendance",
+	// Project Finance (invoices → Sales Invoice, supplier bills → Purchase Invoice)
+	"finance-invoice-new": "salesInvoice",
+	"finance-invoice-edit": "salesInvoice",
+	"finance-invoice": "salesInvoice",
+	"finance-invoice-print": "salesInvoice",
+	"finance-supplier-bill-new": "supplierBill",
+	"finance-supplier-bill-edit": "supplierBill",
+	"finance-supplier-bill": "supplierBill",
+	"petty-cash": "pettyCash",
+};
+
+// The generic records browser routes and the has_permission ptype each one needs. The
+// DocType is a route param (dynamic), so unlike ROUTE_CAPS these resolve against the
+// backend at navigation time via get_doctype_permissions rather than the static payload.
+const GENERIC_RECORD_CAPS = {
+	"records-list": "read",
+	"record-new": "create",
+	"record-edit": "write",
+};
+
+// Infer the capability a route needs from its name: `*-new` → create, `*-edit` → edit,
+// everything else → read. Keeps ROUTE_CAPS a flat name→key map instead of repeating the
+// action on every entry.
+function inferCapAction(name = "") {
+	if (name.endsWith("-new")) return "create";
+	if (name.endsWith("-edit")) return "edit";
+	return "read";
+}
+
+const router = createRouter({
+	history: createWebHistory(APP_ROUTE),
+	routes,
+	scrollBehavior() {
+		return { top: 0 };
+	},
+});
+
+// Custom-UI report routes whose access is anchored on a backend Report record — mirrors
+// buildsuite_core.report_access.ROUTE_TO_REPORT. The access context's `reportRoutes` is the
+// permitted subset for the current user; a route here that isn't in it is denied on deep link.
+// Keep in sync with report_access._REPORT_ANCHORS.
+const GATED_REPORT_ROUTES = new Set([
+	"/project-finance/report/pnl",
+	"/project-finance/report/aged",
+	"/project-finance/report/position",
+	"/project-finance/report/expenses",
+	"/project-finance/report/cashbank",
+	"/project-finance/report/petty",
+	"/procurement/report/requests-to-order",
+	"/procurement/report/delivery-followup",
+	"/procurement/report/site-stock",
+	"/procurement/report/rate-check",
+	"/procurement/report/purchase-register",
+	"/procurement/report/consumption-by-cost-code",
+	"/labour-attendance",
+	"/overtime-attendance",
+	"/workforce/attendance-summary",
+	"/reports/delay-analysis",
+]);
+
+router.beforeEach(async (to) => {
+	const unprotected = new Set(["forbidden"]);
+	if (unprotected.has(to.name)) return true;
+
+	const sessionStore = useSessionStore();
+	const access = await sessionStore.ensureAccess({ force: false });
+
+	if (!sessionStore.authenticated) {
+		window.location.assign(getLoginUrl(to.fullPath));
+		return false;
+	}
+
+	if (!access?.allowed) {
+		return {
+			name: "forbidden",
+			query: {
+				reason: access?.reason || "missing_role",
+				target: to.fullPath,
+			},
+		};
+	}
+
+	// ----- Per-route permission guards (beyond the app-level `allowed` gate above) -----
+	// These consume the store getters that everything else now flows through, so they gate on
+	// backend truth (workspace visibility / admin role / resource caps) — a hidden route's DEEP
+	// LINK is blocked, not just its sidebar entry.
+	const dataStore = useDataStore();
+	dataStore.hydrate(); // idempotent; ensures the store is populated
+
+	// Workspace deep-link: block a workspace route (meta.workspace = slug) the user can't see.
+	// Fail-open if the visible list hasn't populated yet (mid-boot), so a legitimate user is
+	// never false-denied. A new workspace route just declares its own meta.workspace.
+	if (to.meta?.workspace) {
+		const visible = dataStore.visibleWorkspaces;
+		if (visible.length && !visible.includes(to.meta.workspace)) return { path: "/" };
+	}
+
+	// Admin-only routes (declared via meta). Mirrors the redirect the settings views already do.
+	if (to.meta?.requiresBSA && !dataStore.isBSA) return { path: "/settings" };
+	if (to.meta?.requiresAdmin && !dataStore.isAdmin) return { path: "/settings" };
+
+	// Resource-cap deep links — block a form/screen for a resource the user lacks the matching
+	// cap on. The resource key comes from an explicit `meta.cap` or the ROUTE_CAPS name map;
+	// the action is `meta.capAction` or inferred from the route (`*-new` create / `*-edit` edit
+	// / else read). Mirrors the affordance usePermissions already hides, so a hand-typed
+	// `.../new` URL redirects instead of opening a form the backend would reject on save.
+	const capResource = to.meta?.cap || ROUTE_CAPS[to.name];
+	// Fail-open if the caps payload hasn't populated yet (mid-boot), so a legitimate user is
+	// never bounced before their permissions are known — same philosophy as the workspace guard.
+	const capsReady = Object.keys(access?.resourcePermissions || {}).length > 0;
+	if (capResource && capsReady) {
+		const action = to.meta?.capAction || inferCapAction(to.name);
+		const { canRead, canCreate, canEdit } = usePermissions();
+		const allowedCap =
+			action === "create"
+				? canCreate(capResource)
+				: action === "edit"
+					? canEdit(capResource)
+					: canRead(capResource);
+		if (!allowedCap) return { path: "/" };
+	}
+
+	// Bespoke report deep-link — a custom-UI report route is gated by its backend Report anchor
+	// (buildsuite_core.report_access). Block it unless the access context lists it as permitted;
+	// mirrors the workspace-tile gate, so a hand-typed report URL is denied the same way.
+	if (GATED_REPORT_ROUTES.has(to.path) && !(access?.reportRoutes || []).includes(to.path)) {
+		return { path: "/" };
+	}
+
+	// Generic records browser (/records/:doctype/*) — the DocType is dynamic, so its cap
+	// isn't in the static resourcePermissions payload. Resolve it live from the backend
+	// (allow-list + frappe.has_permission): the list needs read, `new` needs create, `edit`
+	// needs write. A definitive `false` redirects; a thrown error (not allow-listed, or a
+	// transient failure) defers to the view, which re-checks and shows an inline "not
+	// available here" state — and the backend still enforces read/write regardless.
+	const genericNeed = GENERIC_RECORD_CAPS[to.name];
+	if (genericNeed && to.params?.doctype) {
+		try {
+			const p = await getDoctypePermissions(to.params.doctype);
+			if (p && p[genericNeed] === false) return { path: "/" };
+		} catch {
+			// non-allow-listed / perm error / network — the view handles it, backend enforces.
+		}
+	}
+
+	return true;
+});
+
+// Set a distinct browser title per route. A view may further refine it (e.g. to a
+// record name) via usePageTitle once its data loads.
+router.afterEach((to) => {
+	const label = PAGE_TITLES[to.name];
+	document.title = label ? `${label} · ${APP_TITLE}` : APP_TITLE;
+});
+
+export default router;
