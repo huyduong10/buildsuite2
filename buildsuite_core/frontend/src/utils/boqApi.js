@@ -70,3 +70,17 @@ export const createRevision = (boq, sourceSco = null, title = null) =>
 export const cloneBoq = (payload) => request("clone_boq", payload);
 export const importTemplate = (boq, estimateTemplate) =>
 	request("import_template", { boq, estimate_template: estimateTemplate });
+
+export const parseBoqFile = (fileContentB64, filename) =>
+	request("parse_boq_file", {
+		file_content_b64: fileContentB64,
+		filename,
+	});
+export const importBoqFile = (boq, fileContentB64, filename, replaceExisting = false) =>
+	request("import_boq_file", {
+		boq,
+		file_content_b64: fileContentB64,
+		filename,
+		replace_existing: replaceExisting ? 1 : 0,
+	});
+export const exportBoqXlsx = (boq) => request("export_boq_xlsx", { boq });

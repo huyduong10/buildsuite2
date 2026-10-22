@@ -685,6 +685,152 @@ function exportCsv() {
 	URL.revokeObjectURL(url);
 }
 
+// === Export Excel (.xlsx) ===
+async function exportXlsx() {
+	if (!boq.value) return;
+	try {
+		const res = await boqApi.exportBoqXlsx(boq.value.id);
+		if (!res?.content_b64) return;
+		const bin = atob(res.content_b64);
+		const bytes = new Uint8Array(bin.length);
+		for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+		const blob = new Blob([bytes], {
+			type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = res.filename || `${boq.value.id}.xlsx`;
+		a.click();
+		URL.revokeObjectURL(url);
+	} catch (err) {
+		showToast(parseFrappeError(err).summary ?? __("Failed to export Excel"), "error");
+	}
+}
+
+// === Import CSV / Excel File ===
+const importFileModal = ref(false);
+const importFileForm = ref({
+	fileName: "",
+	contentB64: "",
+	replaceExisting: false,
+	summary: null,
+	preview: [],
+	parsing: false,
+	submitting: false,
+	error: "",
+});
+
+function openFileImport() {
+	importFileForm.value = {
+		fileName: "",
+		contentB64: "",
+		replaceExisting: false,
+		summary: null,
+		preview: [],
+		parsing: false,
+		submitting: false,
+		error: "",
+	};
+	importFileModal.value = true;
+}
+
+function downloadSampleBoqCsv() {
+	const sampleRows = [
+		[
+			"Type",
+			"Code",
+			"Description",
+			"Unit",
+			"Planned Qty",
+			"Rate",
+			"Planned Amount",
+			"Actual Qty",
+			"Actual Amount",
+			"Work Package",
+			"Cost Head",
+		],
+		["Group", "A", "Phần móng & Công tác đất (Substructure)", "", "", "", "", "", "", "", ""],
+		["Item", "A.01", "Đào đất hố móng (Excavation)", "m3", "120", "185000", "22200000", "", "", "", "Equipment"],
+		["Sub", "↳", "Ca máy đào 0.8m3", "ca", "0.05", "3200000", "160000", "", "", "", ""],
+		["Sub", "↳", "Nhân công bậc 3/7", "công", "0.08", "312500", "25000", "", "", "", ""],
+		["Item", "A.02", "Bê tông lót móng đá 4x6 M100", "m3", "25", "1450000", "36250000", "", "", "", "Material"],
+		["Group", "B", "Phần thân (Superstructure)", "", "", "", "", "", "", "", ""],
+		["Item", "B.01", "Bê tông cột dầm sàn M300", "m3", "85", "1950000", "165750000", "", "", "", "Material"],
+	];
+	const csvText = sampleRows
+		.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
+		.join("\n");
+	const blob = new Blob(["\ufeff" + csvText], { type: "text/csv;charset=utf-8" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = "BOQ_Import_Sample.csv";
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+function onBoqFileSelected(event) {
+	const file = event?.target?.files?.[0];
+	if (!file) return;
+	importFileForm.value.fileName = file.name;
+	importFileForm.value.error = "";
+	importFileForm.value.summary = null;
+	importFileForm.value.preview = [];
+	importFileForm.value.parsing = true;
+
+	const reader = new FileReader();
+	reader.onload = async () => {
+		const dataUrl = String(reader.result || "");
+		const b64 = dataUrl.includes(",") ? dataUrl.split(",", 2)[1] : dataUrl;
+		importFileForm.value.contentB64 = b64;
+		try {
+			const res = await boqApi.parseBoqFile(b64, file.name);
+			importFileForm.value.summary = res?.summary || null;
+			importFileForm.value.preview = res?.preview || [];
+		} catch (err) {
+			importFileForm.value.error =
+				parseFrappeError(err).summary ?? __("Could not parse the selected file.");
+		} finally {
+			importFileForm.value.parsing = false;
+		}
+	};
+	reader.onerror = () => {
+		importFileForm.value.parsing = false;
+		importFileForm.value.error = __("Failed to read file.");
+	};
+	reader.readAsDataURL(file);
+}
+
+async function doFileImport() {
+	const f = importFileForm.value;
+	if (!f.contentB64 || f.submitting) return;
+	f.submitting = true;
+	f.error = "";
+	try {
+		const res = await boqApi.importBoqFile(
+			boq.value.id,
+			f.contentB64,
+			f.fileName,
+			f.replaceExisting
+		);
+		importFileModal.value = false;
+		reloadTree();
+		showToast(
+			__("Imported {0} groups, {1} items, {2} sub-items", [
+				res?.groups ?? 0,
+				res?.items ?? 0,
+				res?.sub_items ?? 0,
+			])
+		);
+	} catch (err) {
+		f.error = parseFrappeError(err).summary ?? __("Failed to import BOQ file");
+		showToast(f.error, "error");
+	} finally {
+		f.submitting = false;
+	}
+}
+
 // === Import Estimate Template ===
 const importModal = ref(false);
 const importForm = ref({ template: "" });
@@ -1180,6 +1326,25 @@ const breadcrumbs = computed(() => {
 							@click="exportCsv"
 						>
 							⬇ {{ __("Export CSV") }}
+						</button>
+
+						<button
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="exportXlsx"
+						>
+							⬇ {{ __("Export Excel") }}
+						</button>
+
+						<button
+							v-if="isEditable && canEdit('boq')"
+							type="button"
+							class="text-xs px-2 py-1 border border-ink-200 bg-white hover:bg-ink-50"
+							style="border-radius: 2px"
+							@click="openFileImport"
+						>
+							⬆ {{ __("Import CSV / Excel…") }}
 						</button>
 
 						<button
@@ -2323,6 +2488,176 @@ const breadcrumbs = computed(() => {
 							{{ __("Create revision") }}
 						</button>
 					</footer>
+				</div>
+			</div>
+
+			<!-- ========== Import CSV / Excel modal ========== -->
+			<div
+				v-if="importFileModal"
+				class="fixed inset-0 bg-ink-900/40 z-[60] flex items-center justify-center p-4"
+				@click="importFileModal = false"
+			>
+				<div
+					class="bg-white border border-ink-200 shadow-fp-lg w-full max-w-2xl"
+					style="border-radius: 2px"
+					@click.stop
+				>
+					<div class="px-4 py-3 border-b border-ink-200 flex items-center">
+						<h2 class="text-sm font-semibold text-ink-900">
+							{{ __("Import BOQ from CSV / Excel") }}
+						</h2>
+						<button
+							type="button"
+							@click="importFileModal = false"
+							class="ml-auto text-ink-400 hover:text-ink-900"
+						>
+							✕
+						</button>
+					</div>
+					<div class="p-4 space-y-3">
+						<div class="flex items-center justify-between gap-2">
+							<label class="text-xs font-medium text-ink-700">
+								{{ __("Select file (.csv, .xlsx, .xls)") }}
+							</label>
+							<button
+								type="button"
+								class="text-xs text-brand-700 hover:underline"
+								@click="downloadSampleBoqCsv"
+							>
+								⬇ {{ __("Download sample CSV template") }}
+							</button>
+						</div>
+						<input
+							type="file"
+							accept=".csv,.xlsx,.xls"
+							class="block w-full text-xs text-ink-700 border border-ink-200 p-2 bg-ink-50/40"
+							@change="onBoqFileSelected"
+						/>
+						<p class="text-[11px] text-ink-500">
+							{{
+								__(
+									"Supports BuildSuite's Export CSV / Excel format (Group / Item / Sub rows) as well as standard construction BOQ spreadsheets (Code, Description, Unit, Planned Qty, Rate, Work Package, Cost Head)."
+								)
+							}}
+						</p>
+
+						<label class="flex items-center gap-2 text-xs text-ink-700 pt-1">
+							<input
+								v-model="importFileForm.replaceExisting"
+								type="checkbox"
+								class="rounded border-ink-300"
+							/>
+							<span>
+								{{
+									__(
+										"Replace all existing groups and items in this Draft BOQ (uncheck to append/merge)"
+									)
+								}}
+							</span>
+						</label>
+
+						<div v-if="importFileForm.parsing" class="text-xs text-ink-500 py-2">
+							{{ __("Parsing file…") }}
+						</div>
+
+						<div
+							v-if="importFileForm.error"
+							class="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2"
+						>
+							{{ importFileForm.error }}
+						</div>
+
+						<div v-if="importFileForm.summary" class="space-y-2">
+							<div
+								class="text-xs bg-ink-50 border border-ink-200 px-3 py-2 flex items-center gap-4"
+							>
+								<span class="font-medium text-ink-900">
+									{{ __("Detected:") }}
+								</span>
+								<span>
+									<strong>{{ importFileForm.summary.groups }}</strong>
+									{{ __("groups") }}
+								</span>
+								<span>
+									<strong>{{ importFileForm.summary.items }}</strong>
+									{{ __("items") }}
+								</span>
+								<span>
+									<strong>{{ importFileForm.summary.sub_items }}</strong>
+									{{ __("sub-items") }}
+								</span>
+							</div>
+
+							<div
+								v-if="importFileForm.preview.length"
+								class="max-h-48 overflow-auto border border-ink-200"
+							>
+								<table class="w-full text-[11px] text-left border-collapse">
+									<thead class="bg-ink-50 text-ink-600 sticky top-0">
+										<tr>
+											<th class="px-2 py-1 border-b border-ink-200">{{ __("Group") }}</th>
+											<th class="px-2 py-1 border-b border-ink-200">{{ __("Code") }}</th>
+											<th class="px-2 py-1 border-b border-ink-200">
+												{{ __("Description") }}
+											</th>
+											<th class="px-2 py-1 border-b border-ink-200">{{ __("Unit") }}</th>
+											<th class="px-2 py-1 border-b border-ink-200 text-right">
+												{{ __("Planned Qty") }}
+											</th>
+											<th class="px-2 py-1 border-b border-ink-200 text-right">
+												{{ __("Rate") }}
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr
+											v-for="(row, idx) in importFileForm.preview"
+											:key="idx"
+											class="border-b border-ink-100"
+										>
+											<td class="px-2 py-1 text-ink-500 truncate max-w-[120px]">
+												{{ row.group }}
+											</td>
+											<td class="px-2 py-1 font-mono">{{ row.code }}</td>
+											<td class="px-2 py-1 truncate max-w-[200px]">
+												{{ row.description }}
+											</td>
+											<td class="px-2 py-1">{{ row.unit }}</td>
+											<td class="px-2 py-1 text-right font-mono">
+												{{ row.planned_qty }}
+											</td>
+											<td class="px-2 py-1 text-right font-mono">{{ row.rate }}</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					<div
+						class="px-4 py-2 border-t border-ink-200 flex items-center justify-end gap-2"
+					>
+						<button
+							type="button"
+							@click="importFileModal = false"
+							class="text-xs text-ink-600 hover:text-ink-900 px-2 py-1"
+						>
+							{{ __("Cancel") }}
+						</button>
+						<button
+							v-if="canEdit('boq')"
+							type="button"
+							:disabled="
+								!importFileForm.contentB64 ||
+								importFileForm.parsing ||
+								importFileForm.submitting ||
+								!importFileForm.summary?.items
+							"
+							@click="doFileImport"
+							class="desk-save-btn disabled:opacity-50"
+						>
+							{{ importFileForm.submitting ? __("Importing…") : __("Import") }}
+						</button>
+					</div>
 				</div>
 			</div>
 

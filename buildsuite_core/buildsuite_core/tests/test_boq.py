@@ -457,3 +457,72 @@ class TestBOQ(BuildSuiteTestCase):
 		by_wp = {r.work_package: r for r in b.wp_summaries}
 		self.assertEqual(by_wp[wp_a.name].planned_amount, 3000)
 		self.assertEqual(by_wp[wp_b.name].planned_amount, 1000)
+
+
+	# --- CSV / Excel import & export --------------------------------------
+	def test_csv_and_xlsx_import_export(self):
+		import base64
+
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		csv_text = (
+			"Type,Code,Description,Unit,Planned Qty,Rate,Planned Amount,Actual Qty,Actual Amount,Work Package,Cost Head\n"
+			"Group,A,Substructure,,,,,,,,\n"
+			"Item,A.01,Excavation,m3,10,200,2000,,,,Equipment\n"
+			"Sub,↳,Excavator hire,hr,0.5,400,200,,,,\n"
+			"Item,A.02,Lean concrete,m3,5,100,500,,,,Material\n"
+		)
+		b64 = base64.b64encode(csv_text.encode("utf-8")).decode("ascii")
+		parsed = api.parse_boq_file(b64, "sample.csv")
+		self.assertEqual(parsed["summary"], {"groups": 1, "items": 2, "sub_items": 1})
+
+		res = api.import_boq_file(b.name, b64, "sample.csv", replace_existing=1)
+		self.assertEqual(res["groups"], 1)
+		self.assertEqual(res["items"], 2)
+		self.assertEqual(res["sub_items"], 1)
+		b.reload()
+		self.assertEqual(b.planned_amount, 2500)
+
+		# Export to .xlsx and re-import into a fresh BOQ
+		exported = api.export_boq_xlsx(b.name)
+		self.assertTrue(exported["filename"].endswith(".xlsx"))
+		b2 = self._boq(p.name)
+		res2 = api.import_boq_file(b2.name, exported["content_b64"], exported["filename"], replace_existing=1)
+		self.assertEqual(res2["items"], 2)
+		b2.reload()
+		self.assertEqual(b2.planned_amount, 2500)
+
+
+	# --- CSV / Excel import & export --------------------------------------
+	def test_csv_and_xlsx_import_export(self):
+		import base64
+
+		p = self._make_project(company=self.company)
+		b = self._boq(p.name)
+		csv_text = (
+			"Type,Code,Description,Unit,Planned Qty,Rate,Planned Amount,Actual Qty,Actual Amount,Work Package,Cost Head\n"
+			"Group,A,Substructure,,,,,,,,\n"
+			"Item,A.01,Excavation,m3,10,200,2000,,,,Equipment\n"
+			"Sub,↳,Excavator hire,hr,0.5,400,200,,,,\n"
+			"Item,A.02,Lean concrete,m3,5,100,500,,,,Material\n"
+		)
+		b64 = base64.b64encode(csv_text.encode("utf-8")).decode("ascii")
+		parsed = api.parse_boq_file(b64, "sample.csv")
+		self.assertEqual(parsed["summary"], {"groups": 1, "items": 2, "sub_items": 1})
+
+		res = api.import_boq_file(b.name, b64, "sample.csv", replace_existing=1)
+		self.assertEqual(res["groups"], 1)
+		self.assertEqual(res["items"], 2)
+		self.assertEqual(res["sub_items"], 1)
+		b.reload()
+		self.assertEqual(b.planned_amount, 2500)
+
+		# Export to .xlsx and re-import into a fresh BOQ
+		exported = api.export_boq_xlsx(b.name)
+		self.assertTrue(exported["filename"].endswith(".xlsx"))
+		b2 = self._boq(p.name)
+		res2 = api.import_boq_file(b2.name, exported["content_b64"], exported["filename"], replace_existing=1)
+		self.assertEqual(res2["items"], 2)
+		b2.reload()
+		self.assertEqual(b2.planned_amount, 2500)
+
