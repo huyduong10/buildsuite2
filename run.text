@@ -1,0 +1,62 @@
+These are the commands to run the project in PowerShell.
+
+**Daily start (everything is already built)**
+
+```powershell
+# 1. Start Docker Desktop and wait for it to be ready
+Start-Process "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe"
+do { Start-Sleep 5; $v = docker version --format '{{.Server.Version}}' 2>$null } until ($v)
+
+# 2. Start the stack
+cd c:\buildsuite2\buildsuite2\frappe_docker
+docker compose -f buildsuite.yml up -d
+
+# 3. Check that everything is up
+docker ps --format "{{.Names}} {{.Status}}"
+```
+
+Then open http://localhost:8080/login and log in with `Administrator` / `admin`. After that, go to http://localhost:8080/core. Startup takes about 1 to 2 minutes.
+
+**Stop**
+
+```powershell
+cd c:\buildsuite2\buildsuite2\frappe_docker
+docker compose -f buildsuite.yml down      # keeps your data
+```
+
+**Full rebuild from scratch (after changing code)**
+
+```powershell
+# Build the frontend
+cd c:\buildsuite2\buildsuite2\buildsuite_core\frontend
+npx --yes yarn@1 install --network-timeout 600000
+npx --yes yarn@1 build 
+
+
+# Build the image and start
+cd c:\buildsuite2\buildsuite2\frappe_docker
+docker build -f Dockerfile.buildsuite -t buildsuite-erpnext:local ../buildsuite_core
+docker compose -f buildsuite.yml up -d
+
+# Apply database/schema changes if you edited DocTypes
+docker exec frappe_docker-backend-1 bench --site frontend migrate
+docker restart frappe_docker-backend-1
+```
+
+**Optional: frontend dev server on port 5173**
+
+```powershell
+cd c:\buildsuite2\buildsuite2\buildsuite_core\frontend
+$env:VITE_FRAPPE_HOST="http://localhost:8080"
+npx --yes yarn@1 dev
+```
+
+**Useful extras**
+
+```powershell
+docker logs --tail 50 frappe_docker-backend-1                       # backend logs
+docker compose -f buildsuite.yml down -v                            # wipe all data (destructive)
+docker exec frappe_docker-backend-1 bench --site frontend backup    # backup
+```
+
+The server restart stopped my background tasks. Your containers will be stopped if Docker Desktop restarted, so run the daily start block above.
