@@ -47,19 +47,20 @@ const userName = computed(() => {
 	return (id && resolveUserName(id)) || store.user?.name || "Admin User";
 });
 const roleLabel = computed(() =>
-	store.isAdmin ? __("System Manager (Admin)") : store.currentRole?.name || __("User")
+	store.isAdmin ? __("System Manager (Admin)") : __(store.currentRole?.name || "User")
 );
 const greetingSub = computed(
-	() => dash.value?.greeting_sub || __("Here is a snapshot of your work today.")
+	() => (dash.value?.greeting_sub ? __(dash.value.greeting_sub) : __("Here is a snapshot of your work today."))
 );
-const dateLabel = computed(() =>
-	new Intl.DateTimeFormat("en-GB", {
+const dateLabel = computed(() => {
+	const lang = window?.frappe?.boot?.lang === "vi" ? "vi-VN" : "en-GB";
+	return new Intl.DateTimeFormat(lang, {
 		weekday: "long",
 		day: "2-digit",
 		month: "short",
 		year: "numeric",
-	}).format(now)
-);
+	}).format(now);
+});
 const initials = computed(() => {
 	const name = userName.value || "A D";
 	const parts = name.split(" ").filter(Boolean);

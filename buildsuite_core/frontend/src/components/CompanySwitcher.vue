@@ -58,7 +58,7 @@ function pickCompany(id) {
 				<div
 					class="px-3 py-2 text-[11px] font-semibold text-ink-500 uppercase tracking-wider border-b border-ink-200 bg-ink-50"
 				>
-					Switch company
+					{{ __("Switch Company") }}
 				</div>
 				<div class="max-h-[65vh] overflow-y-auto scrollbar-thin">
 					<button

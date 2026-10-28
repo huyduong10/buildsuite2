@@ -16,7 +16,7 @@ defineEmits(["update:modelValue"]);
 	<textarea
 		:value="modelValue"
 		:rows="rows"
-		:placeholder="placeholder"
+		:placeholder="placeholder ? __(placeholder) : ''"
 		:disabled="disabled"
 		:readonly="readonly"
 		:name="name"

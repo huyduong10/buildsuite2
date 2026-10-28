@@ -576,7 +576,7 @@ function formatValue(row, fieldname, column = null) {
 		return fmtDate(value);
 	}
 	if (fieldtype === "Check") {
-		return value ? "Yes" : "No";
+		return value ? __("Yes") : __("No");
 	}
 	if (
 		fieldtype === "Currency" ||
@@ -689,14 +689,14 @@ const effectiveTotalRows = computed(() =>
 
 const listCountText = computed(() => {
 	if (!props.paginated) {
-		return `${filteredRows.value.length} of ${resource.data?.length ?? 0}`;
+		return `${filteredRows.value.length} ${__("of")} ${resource.data?.length ?? 0}`;
 	}
 
-	if (!filteredRows.value.length) return "0 records";
+	if (!filteredRows.value.length) return `0 ${__("records")}`;
 	if (totalCount.value != null) {
-		return `${backendRangeStart.value}-${backendRangeEnd.value} of ${totalCount.value} records`;
+		return `${backendRangeStart.value}-${backendRangeEnd.value} ${__("of")} ${totalCount.value} ${__("records")}`;
 	}
-	return `${backendRangeStart.value}-${backendRangeEnd.value} records`;
+	return `${backendRangeStart.value}-${backendRangeEnd.value} ${__("records")}`;
 });
 
 function onPageChange(page) {
@@ -784,7 +784,7 @@ function onPageSizeChange(value) {
 					class="text-[11px] text-ink-500 hover:text-ink-800 px-1"
 					@click="clearFilters"
 				>
-					Clear
+					{{ __("Clear") }}
 				</button>
 			</template>
 
@@ -867,7 +867,7 @@ function onPageSizeChange(value) {
 
 			<template #empty>
 				<slot name="empty">
-					<div class="text-sm text-ink-500">{{ emptyMessage }}</div>
+					<div class="text-sm text-ink-500">{{ __(emptyMessage) }}</div>
 				</slot>
 			</template>
 		</DeskList>

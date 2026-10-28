@@ -47,11 +47,11 @@ function confirm() {
 					class="px-5 py-3 border-b border-ink-200 flex items-center justify-between bg-white"
 					style="border-radius: 12px 12px 0 0"
 				>
-					<h2 class="text-sm font-semibold text-ink-900">{{ title }}</h2>
+					<h2 class="text-sm font-semibold text-ink-900">{{ __(title) }}</h2>
 					<button
 						type="button"
 						class="text-ink-500 hover:text-ink-900 text-lg leading-none ml-3"
-						aria-label="Close"
+						:aria-label="__('Close')"
 						:disabled="loading"
 						@click="close"
 					>
@@ -61,7 +61,7 @@ function confirm() {
 
 				<!-- Body -->
 				<div class="px-5 py-4 text-sm text-ink-700 leading-relaxed">
-					{{ message }}
+					{{ __(message) }}
 				</div>
 
 				<!-- Footer -->
@@ -77,7 +77,7 @@ function confirm() {
 						:disabled="loading"
 						@click="close"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 					<button
 						type="button"
@@ -112,7 +112,7 @@ function confirm() {
 								d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
 							/>
 						</svg>
-						{{ confirmLabel }}
+						{{ __(confirmLabel) }}
 					</button>
 				</footer>
 			</div>

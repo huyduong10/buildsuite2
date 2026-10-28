@@ -71,7 +71,7 @@ const detailRow = computed(() => rows.value[detailIndex.value] || {});
 				<tr>
 					<th class="px-2 py-2 w-8 text-left">#</th>
 					<th v-for="c in columns" :key="c.fieldname" class="px-2 py-2 text-left font-medium">
-						{{ c.label || c.fieldname }}<span v-if="c.reqd" class="text-danger-600"> *</span>
+						{{ __(c.label || c.fieldname) }}<span v-if="c.reqd" class="text-danger-600"> *</span>
 					</th>
 					<th class="w-16"></th>
 				</tr>
@@ -92,7 +92,7 @@ const detailRow = computed(() => rows.value[detailIndex.value] || {});
 						<button
 							type="button"
 							class="text-ink-400 hover:text-ink-700 px-1"
-							title="Open row detail"
+							:title="__('Open row detail')"
 							@click="detailIndex = i"
 						>
 							⤢
@@ -101,7 +101,7 @@ const detailRow = computed(() => rows.value[detailIndex.value] || {});
 							v-if="!disabled"
 							type="button"
 							class="text-ink-400 hover:text-danger-600 px-1"
-							title="Remove row"
+							:title="__('Remove row')"
 							@click="removeRow(i)"
 						>
 							×
@@ -110,14 +110,14 @@ const detailRow = computed(() => rows.value[detailIndex.value] || {});
 				</tr>
 				<tr v-if="!rows.length">
 					<td :colspan="columns.length + 2" class="px-2 py-3 text-center text-ink-400">
-						No rows yet.
+						{{ __("No rows yet.") }}
 					</td>
 				</tr>
 			</tbody>
 		</table>
 		<div v-if="!disabled" class="px-2 py-1.5 border-t border-ink-100">
 			<button type="button" class="text-xs text-brand-600 hover:underline" @click="addRow">
-				+ Add row
+				{{ __("+ Add row") }}
 			</button>
 		</div>
 

@@ -79,7 +79,8 @@ export const fmtCompactINR = fmtCompactCurrency
 export function fmtDate(d) {
 	if (!d) return "—";
 	try {
-		return new Date(d).toLocaleDateString("en-IN", {
+		const lang = typeof window !== "undefined" && window.frappe?.boot?.lang === "vi" ? "vi-VN" : "en-IN";
+		return new Date(d).toLocaleDateString(lang, {
 			day: "2-digit",
 			month: "short",
 			year: "numeric",

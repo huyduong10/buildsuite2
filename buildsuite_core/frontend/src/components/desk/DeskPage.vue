@@ -46,8 +46,8 @@ const statusList = computed(() => {
 			aria-label="Breadcrumb"
 		>
 			<template v-for="(c, i) in breadcrumbs" :key="i">
-				<RouterLink v-if="c.to" :to="c.to" class="desk-link">{{ c.label }}</RouterLink>
-				<span v-else>{{ c.label }}</span>
+				<RouterLink v-if="c.to" :to="c.to" class="desk-link">{{ __(c.label) }}</RouterLink>
+				<span v-else>{{ __(c.label) }}</span>
 				<span v-if="i < breadcrumbs.length - 1" class="text-ink-300">›</span>
 			</template>
 		</nav>
@@ -59,11 +59,11 @@ const statusList = computed(() => {
 						data-test="page-title"
 						class="text-base font-semibold text-ink-900 leading-tight"
 					>
-						{{ title }}
+						{{ __(title) }}
 					</h1>
 					<StatusBadge v-for="s in statusList" :key="s" :status="s" />
 				</div>
-				<p v-if="subtitle" class="text-xs text-ink-500 mt-0.5">{{ subtitle }}</p>
+				<p v-if="subtitle" class="text-xs text-ink-500 mt-0.5">{{ __(subtitle) }}</p>
 			</div>
 			<div
 				data-test="page-actions"
@@ -75,7 +75,7 @@ const statusList = computed(() => {
 					type="button"
 					class="text-xs px-2.5 py-1 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 flex items-center gap-1.5"
 					style="border-radius: 6px"
-					title="Print, or save as PDF from the print dialog"
+					:title="__('Print, or save as PDF from the print dialog')"
 					@click="printPage"
 				>
 					<svg
@@ -93,7 +93,7 @@ const statusList = computed(() => {
 						/>
 						<path d="M6 14h12v8H6z" />
 					</svg>
-					Print
+					{{ __("Print") }}
 				</button>
 			</div>
 		</div>

@@ -492,7 +492,7 @@ const navGroups = computed(() => {
 				type="button"
 				class="hidden lg:flex items-center gap-2 mx-2 mb-1 px-2 py-1.5 rounded text-xs text-ink-500 hover:bg-ink-50"
 				:class="collapsed ? 'lg:justify-center lg:mx-1' : ''"
-				:title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+				:title="collapsed ? __('Expand') : __('Collapse')"
 				@click="toggleCollapse"
 			>
 				<svg
@@ -507,7 +507,7 @@ const navGroups = computed(() => {
 				>
 					<path d="M15 18l-6-6 6-6" />
 				</svg>
-				<span :class="collapsed ? 'lg:hidden' : ''">Collapse</span>
+				<span :class="collapsed ? 'lg:hidden' : ''">{{ __("Collapse") }}</span>
 			</button>
 
 			<!-- Profile entry (prototype S149) — replaces the footer Settings link.
@@ -517,13 +517,13 @@ const navGroups = computed(() => {
 					type="button"
 					class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-ink-700 hover:bg-ink-50 rounded"
 					:class="collapsed ? 'lg:justify-center' : ''"
-					:title="collapsed ? profileName : 'Profile'"
+					:title="collapsed ? profileName : __('Profile')"
 					@click="closeSidebar"
 				>
 					<UserAvatar :user-id="profileUser" size="sm" />
 					<div class="flex-1 min-w-0 text-left" :class="collapsed ? 'lg:hidden' : ''">
 						<div class="truncate font-medium text-ink-900">{{ profileName }}</div>
-						<div class="truncate text-[10px] text-ink-500">{{ profileRole }}</div>
+						<div class="truncate text-[10px] text-ink-500">{{ __(profileRole) }}</div>
 					</div>
 				</button>
 			</div>
@@ -689,7 +689,7 @@ const navGroups = computed(() => {
 					<input
 						ref="searchInput"
 						v-model="searchQuery"
-						placeholder="Search anything — a project, a task, an order number..."
+						:placeholder="__('Search anything — a project, a task, an order number...')"
 						class="w-full text-sm bg-transparent focus:outline-none text-ink-900 placeholder:text-ink-400"
 						@keydown.down.prevent="moveSearch(1)"
 						@keydown.up.prevent="moveSearch(-1)"
@@ -703,7 +703,7 @@ const navGroups = computed(() => {
 						<div
 							class="px-3 pb-1 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 						>
-							Go to
+							{{ __("Go to") }}
 						</div>
 						<button
 							v-for="(p, pi) in places"
@@ -731,7 +731,7 @@ const navGroups = computed(() => {
 							</span>
 							<span class="min-w-0 flex-1 truncate text-sm text-ink-900">{{ p.label }}</span>
 							<span class="text-[10px] text-ink-400 flex-shrink-0">{{
-								p.isReport ? "report" : "list"
+								p.isReport ? __("Report") : __("List")
 							}}</span>
 						</button>
 					</div>
@@ -741,7 +741,7 @@ const navGroups = computed(() => {
 						<div
 							class="px-3 pb-1 text-[10px] uppercase tracking-wider text-ink-500 font-medium"
 						>
-							Records
+							{{ __("Records") }}
 						</div>
 						<button
 							v-for="(r, ri) in recordRows"
@@ -779,17 +779,17 @@ const navGroups = computed(() => {
 						v-if="searchQuery.trim().length >= 2 && !searchFlat.length"
 						class="px-3 py-6 text-center"
 					>
-						<div class="text-sm text-ink-700">No matches</div>
+						<div class="text-sm text-ink-700">{{ __("No matches") }}</div>
 						<div class="text-[11px] text-ink-500 mt-1">
-							Try a project, a person, a supplier, or a document number.
+							{{ __("Try a project, a person, a supplier, or a document number.") }}
 						</div>
 					</div>
 
 					<!-- Before they have typed enough to search on. -->
 					<div v-if="searchQuery.trim().length < 2" class="px-3 py-6 text-center">
-						<div class="text-sm text-ink-700">Type to search</div>
+						<div class="text-sm text-ink-700">{{ __("Type to search") }}</div>
 						<div class="text-[11px] text-ink-500 mt-1">
-							Jump to a list or report, or find a record by name or number.
+							{{ __("Jump to a list or report, or find a record by name or number.") }}
 						</div>
 					</div>
 				</div>
@@ -797,7 +797,7 @@ const navGroups = computed(() => {
 				<div
 					class="px-3 py-2 border-t border-ink-200 bg-ink-50 flex items-center gap-3 text-[10px] text-ink-500"
 				>
-					<span>↑↓ to move</span><span>Enter to open</span><span>Esc to close</span>
+					<span>{{ __("↑↓ to move") }}</span><span>{{ __("Enter to open") }}</span><span>{{ __("Esc to close") }}</span>
 				</div>
 			</div>
 		</div>

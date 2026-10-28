@@ -332,7 +332,7 @@ function onCreate(togglePopover) {
 <template>
 	<div class="space-y-1.5 min-w-0">
 		<label v-if="label" class="block text-[11px] font-medium text-ink-700">
-			{{ label }}
+			{{ __(label) }}
 		</label>
 
 		<Autocomplete
@@ -364,7 +364,7 @@ function onCreate(togglePopover) {
 					@click="togglePopover"
 				>
 					<span class="min-w-0 flex-1 truncate">
-						{{ selectedOption?.label || placeholder }}
+						{{ selectedOption?.label ? __(selectedOption.label) : __(placeholder) }}
 					</span>
 					<span class="text-[10px] text-ink-400">▾</span>
 				</button>

@@ -31,7 +31,7 @@ defineEmits(["save", "cancel"]);
 				style="border-radius: 6px"
 				@click="$emit('cancel')"
 			>
-				{{ cancelLabel }}
+				{{ __(cancelLabel) }}
 			</button>
 			<button
 				v-if="showSave"
@@ -41,7 +41,7 @@ defineEmits(["save", "cancel"]);
 				:disabled="!canSave || saving"
 				@click="$emit('save')"
 			>
-				{{ saving ? savingLabel : saveLabel }}
+				{{ saving ? __(savingLabel) : __(saveLabel) }}
 			</button>
 		</div>
 	</div>

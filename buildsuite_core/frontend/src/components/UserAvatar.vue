@@ -106,6 +106,6 @@ const sizeClass = computed(
 		>
 			?
 		</div>
-		<span v-if="showName" class="text-sm text-ink-400">Unassigned</span>
+		<span v-if="showName" class="text-sm text-ink-400">{{ __("Unassigned") }}</span>
 	</div>
 </template>

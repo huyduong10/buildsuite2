@@ -10,6 +10,7 @@
  * in App.vue. Each entry is auto-removed after `duration` ms.
  */
 import { ref } from "vue";
+import { __ } from "@/utils/translate";
 
 export const toasts = ref([]);
 let _id = 0;
@@ -21,7 +22,7 @@ let _id = 0;
  */
 export function showToast(message, type = "success", duration = 4000) {
 	const id = _id++;
-	toasts.value.push({ id, message, type });
+	toasts.value.push({ id, message: __(message), type });
 	setTimeout(() => {
 		toasts.value = toasts.value.filter((t) => t.id !== id);
 	}, duration);

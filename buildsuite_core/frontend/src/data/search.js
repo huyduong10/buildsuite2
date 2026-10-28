@@ -8,6 +8,8 @@
 // server-side by the same read permission that hides their list. So a query never leaks a record
 // out of a doctype the user can't open.
 
+import { __ } from "@/utils/translate";
+
 // doctype -> how a record result is shown + where it opens. Mirror the backend SEARCHABLE_DOCTYPES
 // (api/search.py); every entry here has a real SPA detail route.
 export const DOCTYPE_META = {
@@ -48,7 +50,7 @@ export function decorateRecord(r) {
 			kind: "record",
 			key: `${r.doctype}:${r.name}`,
 			title: r.title || r.name,
-			type: meta.label,
+			type: __(meta.label),
 			icon: meta.icon,
 			to: meta.to(r.name),
 		};
@@ -57,7 +59,7 @@ export function decorateRecord(r) {
 		kind: "record",
 		key: `${r.doctype}:${r.name}`,
 		title: r.title || r.name,
-		type: r.doctype,
+		type: __(r.doctype),
 		icon: "file-text",
 		to: `/records/${encodeURIComponent(r.doctype)}/${encodeURIComponent(r.name)}`,
 	};
@@ -69,7 +71,7 @@ export function decorateDoctype(d) {
 	return {
 		kind: "place",
 		key: `doctype:${d.doctype}`,
-		label: d.label || d.doctype,
+		label: __(d.label || d.doctype),
 		icon: "file-text",
 		to: `/records/${encodeURIComponent(d.doctype)}`,
 		isDoctype: true,
@@ -166,7 +168,7 @@ export function searchPlaces(query, ctx) {
 		.map((route) => ({ ...REPORT_PLACES[route], to: route, isReport: true, words: REPORT_PLACES[route].words }));
 	const gated = [...PLACES.filter((p) => canRead(p.cap)), ...reportPlaces];
 	return gated
-		.map((p) => ({ ...p, kind: "place", key: p.to, score: scorePlace(q, p) }))
+		.map((p) => ({ ...p, label: __(p.label), kind: "place", key: p.to, score: scorePlace(q, p) }))
 		.filter((p) => p.score > 0)
 		.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
 		.slice(0, 6);

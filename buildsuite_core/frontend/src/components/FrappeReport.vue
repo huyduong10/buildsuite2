@@ -389,7 +389,7 @@ const inputClass =
 		>
 			<div v-for="f in filterDefs" :key="f.fieldname" class="flex flex-col gap-1 min-w-0">
 				<label class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					{{ f.label }}<span v-if="f.mandatory" class="text-danger-600"> *</span>
+					{{ __(f.label) }}<span v-if="f.mandatory" class="text-danger-600"> *</span>
 				</label>
 
 				<!-- Link / Dynamic Link -->
@@ -409,8 +409,8 @@ const inputClass =
 					v-model="filterValues[f.fieldname]"
 					class="!w-44"
 				>
-					<option value="">All</option>
-					<option v-for="o in selectOptions(f)" :key="o" :value="o">{{ o }}</option>
+					<option value="">{{ __("All") }}</option>
+					<option v-for="o in selectOptions(f)" :key="o" :value="o">{{ __(o) }}</option>
 				</DeskSelect>
 
 				<!-- Date / Datetime -->
@@ -432,7 +432,7 @@ const inputClass =
 						:true-value="1"
 						:false-value="0"
 					/>
-					<span>Yes</span>
+					<span>{{ __("Yes") }}</span>
 				</label>
 
 				<!-- Int / Float / Currency -->
@@ -458,10 +458,10 @@ const inputClass =
 					class="text-[11px] text-ink-500 hover:underline"
 					@click="clearFilters"
 				>
-					Clear
+					{{ __("Clear") }}
 				</button>
 				<button type="button" class="text-xs desk-save-btn" @click="applyFilters">
-					Apply
+					{{ __("Apply") }}
 				</button>
 			</div>
 		</div>
@@ -477,7 +477,7 @@ const inputClass =
 				class="bg-white border border-ink-200 rounded-lg px-3 py-2.5"
 			>
 				<div class="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
-					{{ card.label }}
+					{{ __(card.label) }}
 				</div>
 				<div class="text-lg font-semibold tabular-nums mt-0.5" :class="summaryTone(card)">
 					{{ summaryValueText(card) }}
@@ -493,22 +493,20 @@ const inputClass =
 			<input
 				v-model="search"
 				type="text"
-				placeholder="Search this report…"
+				:placeholder="__('Search this report…')"
 				class="text-xs px-2.5 py-1.5 border border-ink-200 rounded-md bg-white text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 w-64 max-w-full"
 			/>
 			<span v-if="!loading && !error" class="text-[11px] text-ink-400">
-				{{ filtered.length.toLocaleString("en-IN") }} row{{
-					filtered.length === 1 ? "" : "s"
-				}}
+				{{ filtered.length.toLocaleString("en-IN") }} {{ __("rows") }}
 			</span>
 		</div>
 
-		<div v-if="loading" class="py-16 text-center text-sm text-ink-400">Running report…</div>
+		<div v-if="loading" class="py-16 text-center text-sm text-ink-400">{{ __("Running report…") }}</div>
 		<div
 			v-else-if="error"
 			class="bg-danger-50 border border-danger-200 rounded-lg px-4 py-6 text-sm text-danger-700"
 		>
-			{{ error }}
+			{{ __(error) }}
 		</div>
 
 		<template v-else>
@@ -524,7 +522,7 @@ const inputClass =
 								class="px-3 py-2 whitespace-nowrap"
 								:class="col.align === 'right' ? 'text-right' : 'text-left'"
 							>
-								{{ col.label }}
+								{{ __(col.label) }}
 							</th>
 						</tr>
 					</thead>

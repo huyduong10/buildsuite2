@@ -1,5 +1,6 @@
 import { watchEffect, unref } from "vue";
 import { APP_TITLE } from "@/utils/appRoute";
+import { __ } from "@/utils/translate";
 
 /**
  * Reactively set the browser/document title to a page-specific value, e.g. the
@@ -13,6 +14,6 @@ import { APP_TITLE } from "@/utils/appRoute";
 export function usePageTitle(source) {
 	watchEffect(() => {
 		const value = typeof source === "function" ? source() : unref(source);
-		if (value) document.title = `${value} · ${APP_TITLE}`;
+		if (value) document.title = `${__(value)} · ${APP_TITLE}`;
 	});
 }

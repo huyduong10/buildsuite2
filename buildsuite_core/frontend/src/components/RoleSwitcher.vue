@@ -24,11 +24,11 @@ function pickRole(roleId) {
 		<button
 			@click="open = !open"
 			class="h-7 pl-1 pr-2 rounded-md hover:bg-ink-50 flex items-center gap-2 border border-ink-200"
-			:title="`Switch role · current: ${currentRole.name}`"
+			:title="`${__('Switch Role')} · ${__(currentRole.name)}`"
 		>
 			<span :class="currentRole.color" class="w-5 h-5 rounded flex-shrink-0"></span>
 			<span class="text-xs font-medium text-ink-700 whitespace-nowrap">{{
-				currentRole.shortName
+				__(currentRole.shortName)
 			}}</span>
 			<svg
 				class="w-3 h-3 text-ink-400"
@@ -55,7 +55,7 @@ function pickRole(roleId) {
 				<div
 					class="px-3 py-2 text-[11px] font-semibold text-ink-500 uppercase tracking-wider border-b border-ink-200 bg-ink-50"
 				>
-					Switch role
+					{{ __("Switch Role") }}
 				</div>
 				<div class="max-h-[65vh] overflow-y-auto scrollbar-thin">
 					<button
@@ -71,10 +71,10 @@ function pickRole(roleId) {
 						></span>
 						<div class="flex-1 min-w-0">
 							<div class="text-sm font-medium text-ink-900 leading-tight">
-								{{ role.name }}
+								{{ __(role.name) }}
 							</div>
 							<div class="text-[11px] text-ink-500 mt-0.5 leading-snug">
-								{{ role.description }}
+								{{ __(role.description) }}
 							</div>
 						</div>
 						<span

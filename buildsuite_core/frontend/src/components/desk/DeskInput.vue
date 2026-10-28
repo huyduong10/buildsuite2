@@ -24,7 +24,7 @@ defineEmits(["update:modelValue"]);
 	<input
 		:type="type"
 		:value="modelValue"
-		:placeholder="placeholder"
+		:placeholder="placeholder ? __(placeholder) : ''"
 		:disabled="disabled"
 		:readonly="readonly"
 		:name="name"

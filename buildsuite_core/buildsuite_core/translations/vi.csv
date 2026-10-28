@@ -54,7 +54,7 @@ Assigned to,Giao cho
 Pick a person…,Chọn người…
 Due date,Ngày đến hạn
 Optional.,Không bắt buộc.
-Priority,Mức ưu tiên
+Priority,Độ ưu tiên
 Status,Trạng thái
 About,Liên quan đến
 Set by the record this was raised from.,Được thiết lập theo bản ghi mà việc này được tạo từ đó.
@@ -72,7 +72,7 @@ Raised by,Người tạo
 Due,Đến hạn
 No due date,Không có ngày đến hạn
 Raised,Ngày tạo
-Edit,Sửa
+Edit,Chỉnh sửa
 Delete,Xóa
 Activity,Hoạt động
 Nothing has happened to this to-do yet.,Việc cần làm này chưa có hoạt động nào.
@@ -90,73 +90,73 @@ Notifications,Thông báo
 Mark all as read,Đánh dấu tất cả đã đọc
 "Assignments, mentions, shares and alerts addressed to you land here.","Các phân công, lượt nhắc đến, chia sẻ và cảnh báo dành cho bạn sẽ hiển thị tại đây."
 See all notifications,Xem tất cả thông báo
-Go to Desktop,Đến màn hình chính
+Go to Desktop,Đi tới ERPNext Desk
 Logout,Đăng xuất
 Search (⌘K),Tìm kiếm (⌘K)
-Search or jump to...,Tìm kiếm hoặc chuyển nhanh đến...
+Search or jump to...,Tìm kiếm hoặc đi tới...
 To-dos — {0} unread,Việc cần làm — {0} chưa đọc
-To-dos — your to-do list,Việc cần làm — danh sách việc cần làm của bạn
+To-dos — your to-do list,Danh sách việc cần làm của bạn
 Switch to light theme,Chuyển sang giao diện sáng
 Switch to dark theme,Chuyển sang giao diện tối
 Settings,Cài đặt
 Home,Trang chủ
 Insights,Phân tích
 Site Execution,Thi công công trường
-Estimation,Dự toán
-Procurement,Mua sắm vật tư
-Subcontract,Thầu phụ
-Workforce,Nhân công
+Estimation,Dự toán & Đấu thầu
+Procurement,Mua sắm & Cung ứng
+Subcontract,Hợp đồng thầu phụ
+Workforce,Nhân lực công trường
 Project Finance,Tài chính dự án
-Equipment,Thiết bị
+Equipment,Thiết bị / Máy thi công
 Accounting,Kế toán
 Buying,Mua hàng
-Stock,Kho
+Stock,Tồn kho
 Assets,Tài sản
-HR,Nhân sự
-Read-only access,Chỉ được xem
-Approve-only access,Chỉ được phê duyệt
+HR,Nhân sự (HR)
+Read-only access,Quyền chỉ xem
+Approve-only access,Quyền phê duyệt
 Create own work only,Chỉ tạo công việc của mình
-Self-service only,Chỉ tự phục vụ
-Team-only (direct reports),Chỉ nhóm của mình (cấp dưới trực tiếp)
+Self-service only,Tự phục vụ
+Team-only (direct reports),Chỉ trong nhóm phụ trách
 Pay-only view,Chỉ xem thanh toán
-Material-request raise only,Chỉ được tạo yêu cầu vật tư
+Material-request raise only,Chỉ tạo yêu cầu vật tư
 Good morning,Chào buổi sáng
 Good afternoon,Chào buổi chiều
 Good evening,Chào buổi tối
 System Manager (Admin),Quản trị hệ thống (Admin)
 User,Người dùng
-Here is a snapshot of your work today.,Tổng quan công việc của bạn hôm nay.
+Here is a snapshot of your work today.,Dưới đây là tổng quan công việc của bạn hôm nay.
 Live,Trực tiếp
 Today's snapshot,Tổng quan hôm nay
 Quick actions,Thao tác nhanh
 View,Xem
 Projects,Dự án
 Tasks,Công việc
-File Progress Entry,Lập phiếu tiến độ
-Schedule,Tiến độ thi công
+File Progress Entry,Cập nhật tiến độ thi công
+Schedule,Tiến độ
 Stage Planning,Kế hoạch giai đoạn
-BOQ,Bảng khối lượng (BOQ)
-Rate Master,Danh mục đơn giá
-Assemblies,Cụm định mức
-Work Orders,Lệnh giao việc
-Subcontractor Bills,Hóa đơn nhà thầu phụ
-Material Requests,Yêu cầu vật tư
-Purchase Orders,Đơn đặt hàng
-Purchase Receipts,Phiếu nhập kho
-Confirm Delivery,Xác nhận giao hàng
-Record Consumption,Ghi nhận tiêu hao
-Items,Mặt hàng
+BOQ,BOQ (Tiên lượng)
+Rate Master,Danh mục đơn giá chuẩn
+Assemblies,Định mức tổ hợp (Assemblies)
+Work Orders,Các lệnh thi công
+Subcontractor Bills,Hồ sơ thanh toán thầu phụ
+Material Requests,Yêu cầu vật tư (MR)
+Purchase Orders,Đơn đặt hàng (PO)
+Purchase Receipts,Phiếu nhập mua hàng
+Confirm Delivery,Xác nhận giao hàng (GRN)
+Record Consumption,Ghi nhận tiêu hao vật tư
+Items,Danh mục vật tư
 Suppliers,Nhà cung cấp
 Invoices,Hóa đơn
-Bills,Hóa đơn mua
+Bills,Hóa đơn mua vào
 Payments,Thanh toán
-Petty Cash,Quỹ tiền mặt nhỏ (tạm ứng)
+Petty Cash,Tiền mặt tại quỹ / Phụ phí công trường
 Expenses,Chi phí
 Financial Overview,Tổng quan tài chính
 Field Attendance,Chấm công công trường
 Field Employees,Nhân sự công trường
-Crews,Tổ đội
-Labour Register,Sổ nhân công
+Crews,Tổ đội thi công
+Labour Register,Sổ chấm công lao động
 Users,Người dùng
 Project Dashboard,Bảng điều khiển dự án
 + Add Member,+ Thêm thành viên
@@ -198,14 +198,14 @@ By,Bởi
 Category,Danh mục
 Category: Any,Danh mục: Tất cả
 Chargeable,Có thể thanh toán
-Client,Chủ đầu tư
+Client,Chủ đầu tư / Khách hàng
 Coming up,Sắp tới
-Commercial,Thương mại
+Commercial,Thương mại & Hợp đồng
 Company,Công ty
 Company: Any,Công ty: Tất cả
-Completed,Hoàn thành
+Completed,Đã hoàn thành
 Completed tasks / total tasks in stage,Công việc hoàn thành / tổng số công việc trong giai đoạn
-Completion,Hoàn thành
+Completion,Mức độ hoàn thành
 Contains supplier pricing and procurement commitments — not for issue to the client. Switch to the client audience before sharing.,Chứa giá của nhà cung cấp và các cam kết mua sắm vật tư — không phát hành cho chủ đầu tư. Hãy chuyển sang đối tượng chủ đầu tư trước khi chia sẻ.
 Contract completion,Hoàn thành theo hợp đồng
 Contract programme,Tiến độ hợp đồng
@@ -226,7 +226,7 @@ Default,Mặc định
 Default (hidden),Mặc định (ẩn)
 Default (shown),Mặc định (hiển thị)
 Defaults to your default company. This is locked after the project is created.,Mặc định là công ty mặc định của bạn. Trường này bị khóa sau khi tạo dự án.
-Delayed,Chậm tiến độ
+Delayed,Trễ tiến độ
 Delayed by {0}d,Chậm {0} ngày
 Delays & constraints,Chậm tiến độ & ràng buộc
 "Delete '{0}' and all its subprojects, work packages, and tasks? This cannot be undone.","Xóa '{0}' cùng toàn bộ dự án con, gói công việc và công việc của dự án? Thao tác này không thể hoàn tác."
@@ -234,7 +234,7 @@ Delete attachment,Xóa tệp đính kèm
 Delete project,Xóa dự án
 Delete {0},Xóa {0}
 Deliveries received,Đợt giao hàng đã nhận
-Description,Mô tả
+Description,Mô tả / Diễn giải
 Edit project,Sửa dự án
 End,Kết thúc
 End date,Ngày kết thúc
@@ -251,16 +251,16 @@ Failed to remove team member,Không thể gỡ thành viên nhóm
 Failed to save project,Không thể lưu dự án
 Failed to seed stages,Không thể tạo các giai đoạn
 Failed to upload {0},Không thể tải lên {0}
-File,Tệp
+File,Tệp tin
 From the,Từ
 Generated,Tạo lúc
 Generated using,Được tạo bằng
 Goods received on site,Hàng đã nhận tại công trường
 Hidden anyway until this is a parent project.,Vẫn bị ẩn cho đến khi đây là dự án cha.
 Hide,Ẩn
-ID,ID
-Impact,Ảnh hưởng
-Import,Nhập
+ID,Mã (ID)
+Impact,Mức độ ảnh hưởng
+Import,Nhập dữ liệu
 Import default tasks,Nhập các công việc mặc định
 Import project template,Nhập mẫu dự án
 Import work packages,Nhập gói công việc
@@ -272,16 +272,16 @@ Industrial,Công nghiệp
 Infrastructure,Hạ tầng
 Inherited from the parent project — locked.,Kế thừa từ dự án cha — đã khóa.
 Initial status,Trạng thái ban đầu
-Inspection,Nghiệm thu
+Inspection,Nghiệm thu / Kiểm tra
 Internal or External (ERPNext).,Nội bộ hoặc Bên ngoài (ERPNext).
 Internal report.,Báo cáo nội bộ.
 Issues raised,Sự cố phát sinh
-Item,Mặt hàng
+Item,Vật tư / Hạng mục
 Key metrics,Chỉ số chính
 Labour-days,Ngày công
 Last update,Cập nhật gần nhất
 Loading template…,Đang tải mẫu…
-Location,Vị trí
+Location,Vị trí / Địa điểm
 Locked after create — a project can't be moved between companies.,Bị khóa sau khi tạo — không thể chuyển dự án sang công ty khác.
 Locked on - this project has {0} subproject. Delete or move them out before turning this off.,Đang bật và bị khóa - dự án này có {0} dự án con. Hãy xóa hoặc chuyển chúng đi trước khi tắt.
 Locked on - this project has {0} subprojects. Delete or move them out before turning this off.,Đang bật và bị khóa - dự án này có {0} dự án con. Hãy xóa hoặc chuyển chúng đi trước khi tắt.
@@ -289,14 +289,14 @@ Material requests raised,Yêu cầu vật tư đã tạo
 Materials,Vật tư
 Materials ordered,Vật tư đã đặt hàng
 Materials received on site,Vật tư đã nhận tại công trường
-Milestone,Mốc tiến độ
+Milestone,Mốc tiến độ (Milestone)
 Monthly report,Báo cáo tháng
 More actions,Thao tác khác
 Moved,Đã chuyển
 Name series,Dãy đặt tên
 Name · Signature · Date,Họ tên · Chữ ký · Ngày
 New,Mới
-New Project,Dự án mới
+New Project,Tạo dự án mới
 No,Không
 No BOQ on this project ·,Dự án này chưa có BOQ ·
 "No attachments yet. Upload drawings, contracts, or site documents.","Chưa có tệp đính kèm. Hãy tải lên bản vẽ, hợp đồng hoặc tài liệu công trường."
@@ -325,7 +325,7 @@ Ongoing,Đang diễn ra
 Open BOQ module →,Mở mô-đun BOQ →
 Open parent →,Mở dự án cha →
 Open →,Mở →
-Opens the browser print dialog. Pick 'Save as PDF' to export.,Mở hộp thoại in của trình duyệt. Chọn 'Lưu dưới dạng PDF' để xuất.
+Opens the browser print dialog. Pick 'Save as PDF' to export.,Mở hộp thoại in của trình duyệt. Chọn 'Lưu dưới dạng PDF' để xuất file.
 "Optional. If given, it becomes the project's record ID; otherwise the naming series is used.","Không bắt buộc. Nếu nhập, giá trị này sẽ là ID bản ghi của dự án; nếu không, hệ thống dùng dãy đặt tên."
 Other stages in this period,Các giai đoạn khác trong kỳ này
 Overview,Tổng quan
@@ -334,7 +334,7 @@ Photograph on file,Ảnh đã lưu
 "Pick a customer, or create one inline.",Chọn khách hàng hoặc tạo mới ngay tại đây.
 Pick a user to add to this project's team.,Chọn người dùng để thêm vào nhóm dự án này.
 Planned,Kế hoạch
-Position,Chức vụ
+Position,Chức vụ / Vị trí
 Prepared by,Người lập
 Priority: Any,Mức ưu tiên: Tất cả
 Programme,Tiến độ
@@ -342,12 +342,12 @@ Progress,Tiến độ
 Progress against programme,Tiến độ so với kế hoạch
 Progress entries,Phiếu tiến độ
 Project,Dự án
-Project Category,Danh mục dự án
+Project Category,Loại hình dự án
 Project ID,ID dự án
-Project Manager,Quản lý dự án
+Project Manager,Giám đốc / Quản lý dự án
 Project Name,Tên dự án
 Project Settings,Cài đặt dự án
-Project Type,Loại dự án
+Project Type,Loại hình dự án
 Project budget (₹),Ngân sách dự án (₹)
 Project category,Danh mục dự án
 Project created,Đã tạo dự án
@@ -362,10 +362,10 @@ Project type,Loại dự án
 Project updated,Đã cập nhật dự án
 Project: Any,Dự án: Tất cả
 Purchase orders placed,Đơn đặt hàng đã tạo
-Qty,SL
+Qty,Khối lượng / SL
 Recoverable,Có thể thu hồi
 Registered office address · GSTIN · Contact,Địa chỉ trụ sở đăng ký · GSTIN · Liên hệ
-Remove,Gỡ
+Remove,Gỡ bỏ / Xóa
 Remove team member,Gỡ thành viên nhóm
 Remove {0} from this project,Gỡ {0} khỏi dự án này
 Remove {0} from this project's team?,Gỡ {0} khỏi nhóm dự án này?
@@ -375,7 +375,7 @@ Reports,Báo cáo
 Residential,Nhà ở
 Reviewed by,Người kiểm tra
 Schedule & cost,Tiến độ thi công & chi phí
-Scope Changes,Thay đổi phạm vi
+Scope Changes,Thay đổi phạm vi (SCO)
 Scope changes,Thay đổi phạm vi
 Search BOQ revisions…,Tìm kiếm phiên bản BOQ…
 "Search by name, code, client…","Tìm kiếm theo tên, mã, chủ đầu tư…"
@@ -402,28 +402,28 @@ Show less ▴,Thu gọn ▴
 Show more ▾,Xem thêm ▾
 Site address,Địa chỉ công trường
 Site photographs,Ảnh công trường
-Size,Kích thước
+Size,Kích thước / Quy mô
 Stage,Giai đoạn
 Stage progress,Tiến độ giai đoạn
-Stages,Giai đoạn
+Stages,Các giai đoạn
 Start,Bắt đầu
 Start date,Ngày bắt đầu
 Status: Any,Trạng thái: Tất cả
 Subproject of,Dự án con của
 Subproject under {0},Dự án con thuộc {0}
-Subprojects,Dự án con
+Subprojects,Dự án thành phần
 Supplier,Nhà cung cấp
 Task,Công việc
 Task Type: Any,Loại công việc: Tất cả
 Task activity,Hoạt động công việc
 Tasks completed,Công việc đã hoàn thành
-Team,Nhóm
+Team,Đội ngũ
 Team & status,Nhóm & trạng thái
 Team member added,Đã thêm thành viên nhóm
 Team member removed,Đã gỡ thành viên nhóm
 Template seeds,Dữ liệu khởi tạo từ mẫu
 The naming series used to generate this project's record ID.,Dãy đặt tên dùng để tạo ID bản ghi của dự án này.
-Timeline,Dòng thời gian
+Timeline,Dòng thời gian / Tiến độ
 Title,Tiêu đề
 Top-level project,Dự án cấp cao nhất
 Turn on to break this project into subprojects (e.g. Block A / Block B / Tower 1).,Bật để chia dự án này thành các dự án con (VD: Khối A / Khối B / Tháp 1).
@@ -431,13 +431,13 @@ Type,Loại
 Uploaded,Đã tải lên
 Uploading… ({0}),Đang tải lên… ({0})
 Variance,Chênh lệch
-Variation,Phát sinh
-Variations,Phát sinh
+Variation,Phát sinh / Thay đổi (VO)
+Variations,Các khoản phát sinh (VO)
 Variations raised,Phát sinh đã tạo
 Weekly report,Báo cáo tuần
 Which tabs this project shows. Leave a tab on,Các tab mà dự án này hiển thị. Hãy để tab ở trạng thái bật
 Will seed {0} stages —,Sẽ tạo {0} giai đoạn —
-Work Packages,Gói công việc
+Work Packages,Các gói công việc
 Work progressed this period,Công việc đã thực hiện trong kỳ
 Yes,Có
 Yet To Start,Chưa bắt đầu
@@ -518,16 +518,16 @@ Cancel {0}?,Hủy {0}?
 Cancelling reverses the receipt — the material leaves stock and the order's received quantity drops back.,Việc hủy sẽ đảo ngược phiếu nhập kho — vật tư được xuất khỏi kho và số lượng đã nhận của đơn hàng giảm trở lại.
 Cancelling withdraws the request — it drops out of the procurement queue. Amend later to raise a corrected copy.,Việc hủy sẽ rút lại yêu cầu — yêu cầu bị loại khỏi hàng đợi mua sắm vật tư. Có thể điều chỉnh sau để tạo bản sửa.
 Confirm receipt,Xác nhận nhận hàng
-Consumed,Đã tiêu hao
-Consumption by cost code,Tiêu hao theo mã chi phí
+Consumed,Đã xuất dùng
+Consumption by cost code,Tiêu hao vật tư theo mã chi phí
 Converting from Material Request,Đang chuyển đổi từ yêu cầu vật tư
 Cost code,Mã chi phí
 Create Receipt,Tạo phiếu nhập kho
 Create a fresh editable draft copy (the original stays cancelled),Tạo bản nháp mới có thể chỉnh sửa (bản gốc vẫn ở trạng thái đã hủy)
 Create order,Tạo đơn hàng
 Delete {0}?,Xóa {0}?
-Delivery follow-up,Theo dõi giao hàng
-Draft,Nháp
+Delivery follow-up,Theo dõi tiến độ giao hàng
+Draft,Bản nháp
 Draft — not posted to stock yet. Submit it to record the goods into the warehouse.,Nháp — chưa ghi nhận vào kho. Hãy gửi duyệt để nhập hàng vào kho.
 Draft — not sent to the office yet. Submit it to enter the procurement queue.,Nháp — chưa gửi về văn phòng. Hãy gửi duyệt để đưa vào hàng chờ mua sắm vật tư.
 Draft — not sent to the supplier yet. Submit it to post the order.,Nháp — chưa gửi cho nhà cung cấp. Hãy gửi duyệt để ghi nhận đơn hàng.
@@ -556,7 +556,7 @@ From the purchase order.,Lấy từ đơn đặt hàng.
 Hide emptied items,Ẩn mặt hàng đã hết
 Includes sub-projects.,Bao gồm các dự án con.
 Into {0},Vào {0}
-Issued,Đã xuất
+Issued,Đã phát hành / Đã xuất
 Item or cost code…,Mặt hàng hoặc mã chi phí…
 Item or store…,Mặt hàng hoặc kho…
 "Item, code, supplier…","Mặt hàng, mã, nhà cung cấp…"
@@ -570,13 +570,13 @@ Loading request…,Đang tải yêu cầu…
 Locked while editing — the request stays on its project.,Bị khóa khi đang sửa — yêu cầu giữ nguyên dự án.
 Locked while editing.,Bị khóa khi đang sửa.
 MR,MR
-Material at site,Vật tư tại công trường
+Material at site,Vật tư tồn tại công trường
 "Material issued to site, grouped by the cost code it was booked against.","Vật tư đã xuất ra công trường, nhóm theo mã chi phí được hạch toán."
 Material request not found.,Không tìm thấy yêu cầu vật tư.
 Needed by,Cần trước ngày
-New Material Request,Tạo yêu cầu vật tư
+New Material Request,Tạo yêu cầu vật tư mới
 New PO,Tạo PO
-New Purchase Order,Tạo đơn đặt hàng
+New Purchase Order,Tạo đơn mua hàng (PO)
 New Purchase Receipt,Tạo phiếu nhập kho
 New Receipt,Tạo phiếu nhập kho
 No items match these filters.,Không có mặt hàng nào khớp bộ lọc.
@@ -603,20 +603,20 @@ Only a draft receipt can be edited.,Chỉ có thể sửa phiếu nhập kho ở
 Only a draft request can be edited.,Chỉ có thể sửa yêu cầu ở trạng thái nháp.
 "Open orders by the date they were needed, how much has landed, and what is still outstanding.","Các đơn hàng đang mở theo ngày cần hàng, số lượng đã về và phần còn thiếu."
 Open the printable purchase order (Save as PDF from the print dialog),Mở bản in đơn đặt hàng (lưu thành PDF từ hộp thoại in)
-Order,Đơn hàng
+Order,Đơn hàng / Thứ tự
 Order cancelled.,Đã hủy đơn hàng.
 Order created.,Đã tạo đơn hàng.
 Order saved.,Đã lưu đơn hàng.
 Order submitted.,Đã gửi duyệt đơn hàng.
 "Order, supplier, project…","Đơn hàng, nhà cung cấp, dự án…"
-Ordered,Đã đặt
+Ordered,Đã đặt hàng
 Over estimate only,Chỉ vượt dự toán
 Overdue only,Chỉ quá hạn
-PO,PO
+PO,Đơn mua hàng (PO)
 PO rate,Đơn giá PO
 Paid,Đã thanh toán
 Partially Ordered,Đã đặt một phần
-Pending,Đang chờ
+Pending,Chờ xử lý
 Pick a project for the request.,Chọn dự án cho yêu cầu.
 Pick a project.,Chọn dự án.
 Pick a purchase order.,Chọn đơn đặt hàng.
@@ -624,15 +624,15 @@ Pick a receiving warehouse.,Chọn kho nhận hàng.
 Pick a supplier.,Chọn nhà cung cấp.
 Print / PDF,In / PDF
 Project store,Kho dự án
-Purchase order,Đơn đặt hàng
+Purchase order,Đơn đặt hàng (PO)
 Purchase order not found.,Không tìm thấy đơn đặt hàng.
-Purchase rate vs estimate,Đơn giá mua so với dự toán
+Purchase rate vs estimate,So sánh giá mua thực tế & dự toán
 Purchase receipt not found.,Không tìm thấy phiếu nhập kho.
-Purchase register,Sổ mua hàng
+Purchase register,Sổ nhật ký mua hàng
 Raise a Purchase Order from this request,Lập đơn đặt hàng từ yêu cầu này
 Raise request,Lập yêu cầu
 Rate,Đơn giá
-Receipt,Phiếu nhập kho
+Receipt,Phiếu thu / Phiếu nhập
 Receipt cancelled.,Đã hủy phiếu nhập kho.
 Receipt recorded.,Đã ghi nhận phiếu nhập kho.
 Receipt saved.,Đã lưu phiếu nhập kho.
@@ -666,7 +666,7 @@ Search suppliers…,Tìm nhà cung cấp…
 Search…,Tìm kiếm…
 Still due,Còn phải nhận
 Stopped,Đã dừng
-Submit,Gửi duyệt
+Submit,Trình duyệt / Xác nhận
 Submit failed,Gửi duyệt thất bại
 "Submit this order to {0} ({1})? It posts the order and locks the lines; a submitted order is amended, not edited.","Gửi duyệt đơn hàng này cho {0} ({1})? Đơn hàng sẽ được ghi nhận và các dòng bị khóa; đơn đã gửi chỉ được điều chỉnh, không được sửa trực tiếp."
 "Submit this request ({0})? It enters the procurement queue; a submitted request is cancelled, not edited.","Gửi duyệt yêu cầu này ({0})? Yêu cầu sẽ vào hàng chờ mua sắm vật tư; yêu cầu đã gửi chỉ có thể hủy, không được sửa."
@@ -682,7 +682,7 @@ To (request date),Đến (ngày yêu cầu)
 To Bill,Chờ lập hóa đơn
 To Receive,Chờ nhận hàng
 To Receive and Bill,Chờ nhận hàng và lập hóa đơn
-Total,Tổng
+Total,Tổng cộng
 Total received,Tổng đã nhận
 UOM,ĐVT
 Unit,Đơn vị
@@ -701,7 +701,7 @@ You don't have permission to edit this purchase receipt.,Bạn không có quyề
 against,theo
 due {0},hạn {0}
 item,mặt hàng
-items,mặt hàng
+items,hạng mục
 lines,dòng
 lines pre-filled; set the supplier and rates.,dòng đã điền sẵn; hãy chọn nhà cung cấp và nhập đơn giá.
 orders,đơn hàng
@@ -820,10 +820,10 @@ Cancelled — no longer a receivable and excluded from income.,Đã hủy — kh
 Cancelled — this expense no longer affects balances or reports. It can be deleted.,Đã hủy — chi phí này không còn ảnh hưởng đến số dư hoặc báo cáo. Có thể xóa.
 Cancelled.,Đã hủy.
 Cash & Bank,Tiền mặt & Ngân hàng
-Cash & Bank Statement,Sao kê tiền mặt & ngân hàng
+Cash & Bank Statement,Sao kê Tiền mặt & Ngân hàng
 Cash & bank,Tiền mặt & ngân hàng
 Cash in hand,Tiền mặt tại quỹ
-Clear,Xóa lọc
+Clear,Xóa
 Closing,Cuối kỳ
 Closing balance,Số dư cuối kỳ
 Company account,Tài khoản công ty
@@ -832,11 +832,11 @@ Contact person,Người liên hệ
 Could not link the advance.,Không liên kết được tạm ứng.
 Create bill,Tạo hóa đơn mua
 Create invoice,Tạo hóa đơn
-Customer,Khách hàng
+Customer,Khách hàng / Chủ đầu tư
 Customer deleted.,Đã xóa khách hàng.
 Customer is required.,Cần chọn khách hàng.
 Customer type,Loại khách hàng
-Customers,Khách hàng
+Customers,Khách hàng / Chủ đầu tư
 Customers owe us,Khách hàng còn nợ
 Defaults to you…,Mặc định là bạn…
 Delete draft?,Xóa bản nháp?
@@ -878,7 +878,7 @@ Enter an amount.,Nhập số tiền.
 Entered — newest first,Ngày nhập — mới nhất trước
 Entered — oldest first,Ngày nhập — cũ nhất trước
 Entries,Bút toán
-Entry,Bút toán
+Entry,Bút toán / Bản ghi
 Expense Account,Tài khoản chi phí
 Expense Summary,Tổng hợp chi phí
 Expense account,Tài khoản chi phí
@@ -919,9 +919,9 @@ Hide empty accounts,Ẩn tài khoản trống
 Holder,Người giữ quỹ
 Holder (petty cash float),Người giữ quỹ (quỹ tiền mặt nhỏ)
 Import from template…,Nhập từ mẫu…
-In,Thu
+In,Thuộc danh sách (In)
 In & out,Thu & chi
-Income,Thu nhập
+Income,Doanh thu / Thu nhập
 "Income and expenses are posted GL entries, grouped by ledger account and scoped to the selected project and period. Direct vs indirect follows the chart of accounts' cost-of-sales boundary. Click an account to list its vouchers.","Thu nhập và chi phí là các bút toán sổ cái đã ghi sổ, nhóm theo tài khoản và giới hạn theo dự án và kỳ đã chọn. Phân loại trực tiếp/gián tiếp theo ranh giới giá vốn trong hệ thống tài khoản. Nhấn vào một tài khoản để xem danh sách chứng từ."
 Indirect Expenses,Chi phí gián tiếp
 Indirect expenses,Chi phí gián tiếp
@@ -961,16 +961,16 @@ Money paid to a supplier or subcontractor before (or without) a bill — it stay
 Money received before (or without) an invoice — it stays on the customer's account until a later invoice draws it down.,Tiền nhận trước (hoặc không kèm) hóa đơn — khoản này nằm trên tài khoản của khách hàng cho đến khi một hóa đơn sau đó trừ dần.
 My Expenses,Chi phí của tôi
 My Requests,Yêu cầu của tôi
-Name,Tên
+Name,Tên / Mã
 Name is required.,Cần nhập tên.
 Needs attention,Cần chú ý
 Net position,Vị thế ròng
 Net total,Tổng thuần
 New Bill,Tạo hóa đơn mua
-New Customer,Tạo khách hàng
-New Expense,Tạo chi phí
-New Invoice,Tạo hóa đơn
-New Supplier,Tạo nhà cung cấp
+New Customer,Tạo khách hàng mới
+New Expense,Tạo khoản chi mới
+New Invoice,Tạo hóa đơn mới
+New Supplier,Tạo nhà cung cấp mới
 New bill,Tạo hóa đơn mua
 New expense,Tạo chi phí
 New party,Tạo đối tác
@@ -1015,7 +1015,7 @@ Opening carries everything before this date.,Số dư đầu kỳ gồm mọi ph
 Optional — tags the income to a project.,Tùy chọn — gắn khoản thu vào một dự án.
 Optional — ties the cost to a project's books.,Tùy chọn — gắn chi phí vào sổ sách của một dự án.
 Out,Chi
-Outstanding,Còn nợ
+Outstanding,Còn nợ / Chưa thanh toán
 Overdue,Quá hạn
 Overdue receivables,Khoản phải thu quá hạn
 Page {0} / {1},Trang {0} / {1}
@@ -1030,7 +1030,7 @@ Pay,Thanh toán
 Pay bill,Thanh toán hóa đơn mua
 Pay from,Thanh toán từ
 Payable,Phải trả
-Payables,Khoản phải trả
+Payables,Công nợ phải trả
 Payables (aged),Khoản phải trả (theo tuổi nợ)
 Payables due,Khoản phải trả đến hạn
 Payables only,Chỉ khoản phải trả
@@ -1040,7 +1040,7 @@ Payment made.,Đã thanh toán.
 Payment received.,Đã nhận thanh toán.
 Payments ({0}),Thanh toán ({0})
 Pending spend (period),Chi tiêu đang chờ (kỳ)
-Period,Kỳ
+Period,Kỳ / Giai đoạn
 "Permanently delete ""{0}"" ({1}) — already cancelled, no balance impact?","Xóa vĩnh viễn ""{0}"" ({1}) — đã hủy, không ảnh hưởng số dư?"
 "Permanently delete ""{0}"" ({1})?","Xóa vĩnh viễn ""{0}"" ({1})?"
 Permanently delete {0}?,Xóa vĩnh viễn {0}?
@@ -1050,7 +1050,7 @@ Petty cash holder,Người giữ quỹ tiền mặt nhỏ
 Petty cash issued — Journal Entry posted.,Đã cấp quỹ tiền mặt nhỏ — đã ghi bút toán.
 Petty cash requested.,Đã yêu cầu quỹ tiền mặt nhỏ.
 Petty cash with holders,Quỹ tiền mặt nhỏ đang do người giữ quỹ nắm
-Phone,Điện thoại
+Phone,Số điện thoại
 Pick a customer.,Chọn khách hàng.
 Pick a customer…,Chọn khách hàng…
 Pick a party.,Chọn đối tượng.
@@ -1070,18 +1070,18 @@ Pick who is receiving the float.,Chọn người nhận quỹ tạm ứng.
 Posting…,Đang ghi sổ…
 Preview and print the invoice,Xem trước và in hóa đơn
 Profit,Lợi nhuận
-Profit & Loss,Lãi lỗ
+Profit & Loss,Báo cáo Kết quả kinh doanh (P&L)
 Purpose,Mục đích
-Reason,Lý do
+Reason,Lý do / Nguyên nhân
 Receipt (optional),Biên lai (tùy chọn)
 Receipt attached.,Đã đính kèm biên lai.
 Receipt failed,Tải biên lai thất bại
 Receipts ({0}),Biên lai ({0})
-Receivables,Phải thu
-Receivables & Payables,Phải thu và phải trả
+Receivables,Công nợ phải thu
+Receivables & Payables,Công nợ Phải thu & Phải trả
 Receivables (aged),Phải thu (theo tuổi nợ)
 Receivables only,Chỉ phải thu
-Receive,Nhận
+Receive,Nhận hàng / Thu tiền
 Receive payment,Nhận thanh toán
 Receiving…,Đang nhận…
 Recent transactions,Giao dịch gần đây
@@ -1099,7 +1099,7 @@ Request Petty Cash,Yêu cầu quỹ tiền mặt nhỏ
 Request petty cash,Yêu cầu quỹ tiền mặt nhỏ
 Request withdrawn.,Đã rút yêu cầu.
 Requested,Đã yêu cầu
-Retention,Tiền giữ lại (bảo hành)
+Retention,Tiền giữ lại bảo hành
 Retention held,Tiền giữ lại đang giữ
 Return {0} to {1}'s unallocated balance? The invoice's outstanding goes back up.,Trả {0} về số dư chưa phân bổ của {1}? Công nợ còn lại của hóa đơn sẽ tăng trở lại.
 Return {0} to {1}'s unallocated balance? The net payable goes back up.,Trả {0} về số dư chưa phân bổ của {1}? Thực thanh toán sẽ tăng trở lại.
@@ -1131,7 +1131,7 @@ Sort,Sắp xếp
 Source,Nguồn
 Sub,Thầu phụ
 Subcontractor,Nhà thầu phụ
-Subcontractor bill,Hóa đơn nhà thầu phụ
+Subcontractor bill,Thanh toán thầu phụ
 Subcontractors,Nhà thầu phụ
 "Subcontractors are suppliers of type ""Subcontractor"" — click one to open its master in the Subcontract module.","Nhà thầu phụ là nhà cung cấp thuộc loại ""Nhà thầu phụ"" — nhấp vào một nhà thầu phụ để mở hồ sơ gốc trong mô-đun Thầu phụ."
 "Submit ""{0}"" ({1})? Submitting posts it — it will hit the {2} balance and the reports.","Gửi duyệt ""{0}"" ({1})? Khi gửi duyệt, chứng từ sẽ được ghi sổ — ảnh hưởng đến số dư {2} và các báo cáo."
@@ -1140,12 +1140,12 @@ Submit expense?,Gửi duyệt chi phí?
 Submit invoice?,Gửi duyệt hóa đơn?
 Submit {0} ({1})? It posts the payable and can then be paid.,Gửi duyệt {0} ({1})? Chứng từ sẽ ghi nhận khoản phải trả và sau đó có thể được thanh toán.
 Submit {0} ({1})? It posts the receivable and counts as income.,Gửi duyệt {0} ({1})? Chứng từ sẽ ghi nhận khoản phải thu và được tính là thu nhập.
-Submitted,Đã gửi
+Submitted,Đã trình duyệt / Đã xác nhận
 Submitted spend,Chi tiêu đã gửi
 Submitted spend (period),Chi tiêu đã gửi (kỳ)
 Submitted — Journal Entry posted.,Đã gửi — bút toán đã được ghi sổ.
 Submitted.,Đã gửi.
-Supplier bill,Hóa đơn mua của nhà cung cấp
+Supplier bill,Hóa đơn nhà cung cấp
 Supplier deleted.,Đã xóa nhà cung cấp.
 Supplier invoice,Hóa đơn nhà cung cấp
 Supplier invoice date,Ngày hóa đơn nhà cung cấp
@@ -1204,7 +1204,7 @@ What we have,Những gì chúng ta có
 What we owe,Những gì chúng ta nợ
 What's it for?,Dùng cho việc gì?
 "Whole company, as it stands right now — this one has no period or project filter.","Toàn công ty, tại thời điểm hiện tại — mục này không có bộ lọc kỳ hoặc dự án."
-Withdraw,Rút lại
+Withdraw,Rút lại / Rút tiền
 Withdraw failed,Rút lại thất bại
 Withdraw request?,Rút lại yêu cầu?
 You don't have permission to create a supplier bill.,Bạn không có quyền tạo hóa đơn mua của nhà cung cấp.
@@ -1269,17 +1269,17 @@ Inactive,Ngừng hoạt động
 Superseded,Bị thay thế
 Replaced,Đã thay thế
 Manual,Thủ công
-Assembly,Cụm định mức
+Assembly,Định mức tổ hợp
 Present,Có mặt
 Full Day,Cả ngày
 Half Day,Nửa ngày
 Absent,Vắng mặt
 Overtime Only,Chỉ làm thêm giờ
 Partially Received,Đã nhận một phần
-Transferred,Đã chuyển
-Delivered,Đã giao
+Transferred,Đã điều chuyển
+Delivered,Đã giao hàng
 Partly Billed,Đã lập hóa đơn một phần
-Return,Trả hàng
+Return,Hoàn trả / Trả hàng
 New {0},Tạo {0} mới
 Create “{0}”,Tạo “{0}”
 % Billed,% đã lập hóa đơn
@@ -1330,7 +1330,7 @@ Create subcontractor,Tạo nhà thầu phụ
 Create work order,Tạo lệnh giao việc
 D,C
 Deduct,Trừ
-Deduction,Khoản khấu trừ
+Deduction,Khấu trừ
 Default (Subcontractor Charges),Mặc định (Phí nhà thầu phụ)
 "Delete ""{0}""?","Xóa ""{0}""?"
 Delete Bill {0}?,Xóa hóa đơn {0}?
@@ -1396,19 +1396,19 @@ Measured,Đã đo
 Measured by,Đo bởi
 Measured to date,Khối lượng đo lũy kế
 Measured total,Tổng khối lượng đo
-Measurement Books,Sổ nghiệm thu khối lượng
+Measurement Books,Sổ đo bóc khối lượng (MB)
 Measurement book certified.,Đã xác nhận sổ nghiệm thu khối lượng.
 Measurement book not found.,Không tìm thấy sổ nghiệm thu khối lượng.
 Measurement books ({0}),Sổ nghiệm thu khối lượng ({0})
-Measurements,Khối lượng đo
+Measurements,Khối lượng nghiệm thu
 Mode,Chế độ
-Net Total,Tổng thuần
+Net Total,Tổng tiền chưa thuế
 Net payable,Thực thanh toán
 Net payable to subcontractor,Thực thanh toán cho nhà thầu phụ
-New Measurement Book,Tạo sổ nghiệm thu khối lượng
-New Subcontractor,Tạo nhà thầu phụ
-New Subcontractor Bill,Tạo hóa đơn nhà thầu phụ
-New Work Order,Tạo lệnh giao việc
+New Measurement Book,Tạo sổ đo bóc khối lượng mới
+New Subcontractor,Thêm nhà thầu phụ mới
+New Subcontractor Bill,Tạo hồ sơ thanh toán thầu phụ
+New Work Order,Tạo lệnh giao việc mới
 No attachments yet.,Chưa có tệp đính kèm.
 No bills raised yet against this WO.,Chưa có hóa đơn nào được lập cho lệnh giao việc này.
 No fresh measured quantity to bill — certify a Measurement Book first.,Không có khối lượng đo mới để lập hóa đơn — hãy xác nhận sổ nghiệm thu khối lượng trước.
@@ -1449,8 +1449,8 @@ Purchase Invoice {0} generated.,Đã tạo hóa đơn mua hàng {0}.
 Quantity = Nos × L × B × D (or entered directly). Deduction rows subtract.,Khối lượng = Số lượng × D × R × C (hoặc nhập trực tiếp). Các dòng khấu trừ sẽ được trừ đi.
 Recovered here,Đã thu hồi tại đây
 Reference,Tham chiếu
-Remarks,Ghi chú
-Retention %,Tiền giữ lại %
+Remarks,Ghi chú / Nhận xét
+Retention %,% Giữ lại bảo hành
 Retention (%),Tiền giữ lại (%)
 Retention {0}%,Tiền giữ lại {0}%
 "Retention, TDS & discount","Tiền giữ lại, TDS và chiết khấu"
@@ -1458,7 +1458,7 @@ Revert failed,Hoàn về thất bại
 Revert to Draft,Chuyển về Nháp
 Save billing,Lưu hóa đơn
 Schedule of values,Bảng giá trị hợp đồng
-Scope,Phạm vi
+Scope,Phạm vi công việc
 Scope / description,Phạm vi / mô tả
 "Search MB, WO, project…","Tìm kiếm MB, lệnh giao việc, dự án…"
 "Search WO, subcontractor, project…","Tìm kiếm lệnh giao việc, nhà thầu phụ, dự án…"
@@ -1467,7 +1467,7 @@ Scope / description,Phạm vi / mô tả
 Sets the accounting company.,Thiết lập công ty hạch toán.
 Settles the payable — advance payments linked below.,Đối trừ khoản phải trả — các khoản tạm ứng được liên kết bên dưới.
 Settles the payable — advance payments linked below; reflects in the outstanding.,Đối trừ khoản phải trả — các khoản tạm ứng được liên kết bên dưới; thể hiện trong công nợ còn lại.
-State,Tỉnh/Bang
+State,Tỉnh / Thành phố / Trạng thái
 Subcontractor Bill {0},Hóa đơn nhà thầu phụ {0}
 Subcontractor Invoice Date,Ngày hóa đơn của nhà thầu phụ
 Subcontractor Invoice No,Số hóa đơn của nhà thầu phụ
@@ -1476,8 +1476,8 @@ Submit Bill {0}?,Gửi duyệt hóa đơn {0}?
 Submit this work order for {0}? It becomes committed cost and its schedule of values is locked.,Gửi duyệt lệnh giao việc này cho {0}? Lệnh sẽ trở thành chi phí cam kết và bảng giá trị hợp đồng sẽ bị khóa.
 Sum across certified Measurement Books for this line,Tổng từ các sổ nghiệm thu khối lượng đã xác nhận cho dòng này
 Tax Rate,Thuế suất
-Taxes and Charges,Thuế và phí
-Template,Mẫu
+Taxes and Charges,Thuế và Chi phí
+Template,Biểu mẫu (Template)
 Terms,Điều khoản
 Terms & conditions printed on the work order…,Điều khoản và điều kiện in trên lệnh giao việc…
 The entries are removed permanently. Measured-to-date on the work order will recompute against the remaining certified books.,Các mục sẽ bị xóa vĩnh viễn. Khối lượng đo lũy kế trên lệnh giao việc sẽ được tính lại theo các sổ đã xác nhận còn lại.
@@ -1496,7 +1496,7 @@ This work order and its schedule of values will be removed permanently.,Lệnh g
 Total advance recovered,Tổng tạm ứng đã thu hồi
 Total taxes,Tổng thuế
 Total value,Tổng giá trị
-Trade,Ngành nghề
+Trade,Hạng mục thi công / Bộ môn
 Trade is required.,Ngành nghề là bắt buộc.
 WO,WO
 WO ID,ID WO
@@ -1506,8 +1506,8 @@ What is being billed,Nội dung lập hóa đơn
 What was measured,Nội dung đã đo
 Withheld,Đã khấu giữ
 Withholding category,Loại khấu trừ
-Work Order,Lệnh giao việc
-Work order,Lệnh giao việc
+Work Order,Lệnh thi công / Giao việc
+Work order,Lệnh giao việc (WO)
 Work order cancelled.,Đã hủy lệnh giao việc.
 Work order not found.,Không tìm thấy lệnh giao việc.
 Work order submitted.,Đã gửi duyệt lệnh giao việc.
@@ -1556,7 +1556,7 @@ Contractor,Nhà thầu
 Could not amend,Không thể sửa đổi
 Could not load the crew.,Không thể tải tổ đội.
 Covering {0}.,Bao gồm {0}.
-Create,Tạo
+Create,Tạo mới
 Create crew,Tạo tổ đội
 Crew,Tổ đội
 Crew (optional),Tổ đội (tùy chọn)
@@ -1594,7 +1594,7 @@ From the worker's trade,Theo nghề của công nhân
 Full,Cả ngày
 Gender,Giới tính
 Half,Nửa ngày
-Labour Attendance Register,Sổ chấm công lao động
+Labour Attendance Register,Sổ chấm công nhân công
 Labour cost,Chi phí nhân công
 Last name,Họ
 Leader,Tổ trưởng
@@ -1603,9 +1603,9 @@ Loading crew…,Đang tải tổ đội…
 Loading field employee…,Đang tải nhân sự công trường…
 Man-days,Ngày công
 Members,Thành viên
-New Crew,Tạo tổ đội
-New Field Attendance,Tạo bảng chấm công công trường
-New Field Employee,Tạo nhân sự công trường
+New Crew,Tạo tổ đội mới
+New Field Attendance,Tạo bảng chấm công mới
+New Field Employee,Thêm nhân sự công trường mới
 No attendance has been submitted yet.,Chưa có bảng chấm công nào được gửi duyệt.
 No employees.,Không có nhân sự.
 No employees. Use,Không có nhân sự. Hãy dùng
@@ -1621,8 +1621,8 @@ OT share,Tỷ lệ làm thêm
 OT wage,Lương làm thêm
 OT wages,Lương làm thêm
 On sheet,Trên bảng
-Overtime,Làm thêm giờ
-Overtime Attendance Register,Sổ chấm công làm thêm giờ
+Overtime,Làm thêm giờ (Tăng ca)
+Overtime Attendance Register,Sổ chấm công tăng ca
 Overtime hours,Giờ làm thêm
 Overtime wage,Lương làm thêm giờ
 Pick a crew…,Chọn tổ đội…
@@ -1644,7 +1644,7 @@ Select Crew,Chọn tổ đội
 Select crew…,Chọn tổ đội…
 Select trade,Chọn nghề
 Site,Công trường
-Site Attendance Summary,Tổng hợp chấm công công trường
+Site Attendance Summary,Tổng hợp quân số công trường
 Sites,Công trường
 Submit to post the attendance and generate the Labour and Overtime registers.,Gửi duyệt để ghi sổ chấm công và tạo sổ lao động và sổ làm thêm giờ.
 Task (optional),Công việc (tùy chọn)
@@ -1659,7 +1659,7 @@ Total OT hours {0} · Total amount {1},Tổng giờ làm thêm {0} · Tổng ti�
 Total daily wages {0},Tổng lương ngày {0}
 Unselect All,Bỏ chọn tất cả
 Wage rate,Đơn giá lương
-Wages,Tiền lương
+Wages,Tiền công
 Worker,Công nhân
 Workers,Công nhân
 You don't have access to this attendance sheet,Bạn không có quyền truy cập bảng chấm công này
@@ -1731,7 +1731,7 @@ Cancel keeps your dragged task at its new dates but leaves dependents flagged fo
 Cancel stage,Hủy giai đoạn
 Capture photo,Chụp ảnh
 Cascade failed.,Dịch chuyển dây chuyền thất bại.
-Change order,Lệnh thay đổi
+Change order,Lệnh thay đổi (SCO)
 Clear search,Xóa tìm kiếm
 Client recoverable,Thu hồi được từ khách hàng
 Collapse,Thu gọn
@@ -1833,7 +1833,7 @@ File progress entry,Lập phiếu tiến độ
 "File today's progress against a task — labour, weather, blockers","Lập tiến độ hôm nay cho công việc — nhân công, thời tiết, vướng mắc"
 "Filed entry, but failed to attach {0}",Đã lập phiếu nhưng không thể đính kèm {0}
 Filed today,Đã lập hôm nay
-Files,Tệp
+Files,Tệp đính kèm
 Filing…,Đang lập phiếu…
 Finish to Finish,Kết thúc đến Kết thúc
 Finish to Start,Kết thúc đến Bắt đầu
@@ -1871,11 +1871,11 @@ Name this revision…,Đặt tên phiên bản này…
 Narrative,Diễn giải
 Negative lag = lead (overlap allowed).,Độ trễ âm = vượt trước (cho phép chồng lấn).
 Net cost impact,Ảnh hưởng chi phí ròng
-New Entry,Tạo phiếu mới
-New Progress Entry,Tạo phiếu tiến độ
-New Stage,Tạo giai đoạn
-New Task,Tạo công việc
-New Work Package,Tạo gói công việc
+New Entry,Tạo bút toán mới
+New Progress Entry,Tạo nhật ký tiến độ mới
+New Stage,Tạo giai đoạn mới
+New Task,Tạo công việc mới
+New Work Package,Tạo gói công việc mới
 Next: Add Tasks,Tiếp theo: Thêm công việc
 No BOQ revision yet — use “+ Raise BOQ revision” above to branch the project's BOQ.,Chưa có phiên bản BOQ — hãy dùng “+ Tạo phiên bản BOQ” ở trên để tách nhánh BOQ của dự án.
 No activity yet.,Chưa có hoạt động.
@@ -1920,9 +1920,9 @@ Pick a task,Chọn công việc
 Pick a task.,Chọn công việc.
 Pick the stages that must complete before this one can start.,Chọn các giai đoạn phải hoàn thành trước khi giai đoạn này bắt đầu.
 Plan a stage →,Lập kế hoạch giai đoạn →
-Planned End,Kết thúc kế hoạch
+Planned End,Kết thúc theo kế hoạch
 Planned Progress (%),Tiến độ kế hoạch (%)
-Planned Start,Bắt đầu kế hoạch
+Planned Start,Bắt đầu theo kế hoạch
 Planned end,Kết thúc kế hoạch
 Planned start,Bắt đầu kế hoạch
 Planned: {0}%,Kế hoạch: {0}%
@@ -1933,7 +1933,7 @@ Pre-selected from where you came in — locked.,Đã chọn sẵn theo nơi bạ
 Pre-selected — locked.,Đã chọn sẵn — bị khóa.
 Predecessor task,Công việc tiền nhiệm
 Predecessors,Công việc tiền nhiệm
-Progress %,Tiến độ %
+Progress %,% Tiến độ
 Progress (actual / planned),Tiến độ (thực tế / kế hoạch)
 Progress can't go below the recorded {0}%. Entries are cumulative.,Tiến độ không thể thấp hơn mức đã ghi nhận {0}%. Các phiếu là lũy kế.
 Progress entry deleted,Đã xóa phiếu tiến độ
@@ -1948,7 +1948,7 @@ Project · WP,Dự án · Gói công việc
 Raise,Tạo
 Raise BOQ revision?,Tạo phiên bản BOQ?
 Raise SCO,Tạo lệnh thay đổi phạm vi
-Raise Scope Change Order,Tạo lệnh thay đổi phạm vi
+Raise Scope Change Order,Tạo lệnh thay đổi phạm vi (SCO)
 Raise revision,Tạo phiên bản
 Raising submits it for PM / Director approval,Việc tạo sẽ gửi lệnh để PM / Giám đốc phê duyệt
 Raising…,Đang tạo…
@@ -1971,16 +1971,16 @@ Restore failed.,Khôi phục thất bại.
 Restore revision?,Khôi phục phiên bản?
 "Restore the schedule to ""{0}""? Current dates are saved to Undo first, so you can revert this.","Khôi phục tiến độ thi công về ""{0}""? Các ngày hiện tại sẽ được lưu vào Hoàn tác trước, nên bạn có thể quay lại."
 "Restored ""{0}"".","Đã khôi phục ""{0}""."
-Review,Xem xét
+Review,Xem xét / Duyệt
 Revise,Điều chỉnh
 Revise failed,Điều chỉnh thất bại
 Revise stage,Điều chỉnh giai đoạn
 Revision name,Tên phiên bản
-Revisions,Phiên bản
+Revisions,Các lần sửa đổi
 SS — Start to Start,SS — Bắt đầu đến Bắt đầu
 "Saved revision ""{0}"".","Đã lưu phiên bản ""{0}""."
 Schedule conflict,Xung đột tiến độ
-Scope Change Orders,Lệnh thay đổi phạm vi
+Scope Change Orders,Lệnh thay đổi phạm vi (SCO)
 Scope change order approved.,Lệnh thay đổi phạm vi đã được phê duyệt.
 Scope change order rejected.,Lệnh thay đổi phạm vi đã bị từ chối.
 "Scope, gates, hand-off notes…","Phạm vi, cổng kiểm soát, ghi chú bàn giao…"
@@ -1997,7 +1997,7 @@ Site conditions,Điều kiện công trường
 "Site photos, QC reports, drawings — picked here and saved with the entry.","Ảnh công trường, báo cáo QC, bản vẽ — chọn tại đây và lưu cùng phiếu."
 Skilled,Lành nghề
 Skilled labour,Nhân công lành nghề
-Stage Review,Xem xét giai đoạn
+Stage Review,Đánh giá giai đoạn
 Stage activity,Hoạt động giai đoạn
 "Stage activity (submissions, approvals, edits) will appear here.","Hoạt động của giai đoạn (gửi duyệt, phê duyệt, chỉnh sửa) sẽ hiển thị tại đây."
 Stage created,Đã tạo giai đoạn
@@ -2018,7 +2018,7 @@ Submit for approval,Gửi duyệt
 Successor task,Công việc kế nhiệm
 Successors,Công việc kế nhiệm
 TBD,Chưa xác định
-Task Progress Entry,Phiếu tiến độ công việc
+Task Progress Entry,Nhật ký tiến độ công việc
 Task Type,Loại công việc
 Task created,Đã tạo công việc
 "Task created, but could not resolve its ID for navigation",Đã tạo công việc nhưng không thể xác định ID để điều hướng
@@ -2168,7 +2168,7 @@ Basic,Cơ bản
 Before the items,Trước các hạng mục
 Bid before tax,Giá dự thầu trước thuế
 Bid value,Giá trị dự thầu
-Bill of Quantities,Bảng khối lượng (BOQ)
+Bill of Quantities,Bảng tiên lượng (BOQ)
 Can't be before the date issued.,Không được trước ngày phát hành.
 Cannot be negative — a price cannot expire before it is offered.,Không được âm — giá không thể hết hiệu lực trước khi được chào.
 Cannot be negative.,Không được âm.
@@ -2238,7 +2238,7 @@ Delete tender,Xóa hồ sơ thầu
 Delete {0}? This also removes its rate history.,Xóa {0}? Thao tác này cũng xóa lịch sử đơn giá của mục này.
 Description and a non-zero quantity per unit are required.,Bắt buộc có mô tả và định mức khác 0 trên mỗi đơn vị.
 Description and unit are required.,Bắt buộc có mô tả và đơn vị.
-Disabled,Đã tắt
+Disabled,Đã vô hiệu hóa
 Drafts,Bản nháp
 EMD,EMD
 EMD amount (₹),Số tiền EMD (₹)
@@ -2255,12 +2255,12 @@ Edit sub-item,Sửa hạng mục con
 Edit template,Sửa mẫu
 Effective,Có hiệu lực
 Empty = universal.,Để trống = áp dụng chung.
-Enabled,Đã bật
+Enabled,Đang bật
 Envelope,Phong bì
 Envelope structure,Cấu trúc phong bì
 Estimate Template,Mẫu dự toán
 Estimate template,Mẫu dự toán
-Estimated,Dự toán
+Estimated,Ước tính / Dự toán
 Estimated total,Tổng dự toán
 Every item needs a description.,Mỗi hạng mục cần có mô tả.
 Every line needs a quantity above zero.,Mỗi dòng cần có số lượng lớn hơn 0.
@@ -2326,9 +2326,9 @@ Loading estimate template…,Đang tải mẫu dự toán…
 Loading quotation…,Đang tải báo giá…
 Loading rates…,Đang tải đơn giá…
 Loading tender…,Đang tải hồ sơ thầu…
-Main Contractor,Tổng thầu
+Main Contractor,Nhà thầu chính
 Manual edits stamp 'Manual'. Rate updates triggered from an approved Purchase Order will stamp the PO number automatically — that flow lives on the PO page.,Chỉnh sửa thủ công sẽ được ghi nhận là 'Thủ công'. Cập nhật đơn giá phát sinh từ Đơn đặt hàng đã phê duyệt sẽ tự động ghi số đơn đặt hàng — quy trình đó nằm ở trang Đơn đặt hàng.
-Margin %,Biên lợi nhuận %
+Margin %,% Biên lợi nhuận
 Margin and tax are applied to the subtotal — sell rate and amount are worked out on save.,Biên lợi nhuận và thuế được áp dụng cho tổng phụ — đơn giá bán và thành tiền được tính khi lưu.
 Margin {0}%,Biên lợi nhuận {0}%
 Material,Vật tư
@@ -2336,11 +2336,11 @@ Material / Labour / Equipment / Subcontract / Preliminaries / Other,Vật tư / 
 Money genuinely lodged — it shows as at stake until the bid is decided.,Số tiền đã thực sự nộp — được hiển thị là đang bị treo cho đến khi có kết quả thầu.
 Name is required,Bắt buộc nhập tên
 Needs a deadline. Miss it and the bid cannot be entered.,Cần có hạn chót. Quá hạn thì không thể nhập hồ sơ dự thầu.
-New Assembly,Tạo cụm định mức
-New BOQ,Tạo BOQ
+New Assembly,Tạo định mức tổ hợp mới
+New BOQ,Tạo BOQ mới
 New Estimate Template,Tạo mẫu dự toán
-New Quotation,Tạo báo giá
-New Tender,Tạo hồ sơ thầu
+New Quotation,Tạo báo giá mới
+New Tender,Tạo gói thầu mới
 New group,Tạo nhóm
 New item,Tạo hạng mục
 New rate,Tạo đơn giá
@@ -2420,9 +2420,9 @@ Rename group,Đổi tên nhóm
 Resource,Nguồn lực
 Resource name is required.,Bắt buộc nhập tên nguồn lực.
 Rev.,Phiên bản
-Revision,Phiên bản
+Revision,Phiên bản sửa đổi
 Revision title,Tên phiên bản
-Rows,Dòng
+Rows,Các dòng
 Say what the quotation is for.,Nêu mục đích của báo giá.
 Say what the tender is for.,Nêu mục đích của hồ sơ thầu.
 Search BOQ id or title…,Tìm mã hoặc tên BOQ…
@@ -2449,18 +2449,18 @@ Start from a template,Bắt đầu từ mẫu
 Submission,Nộp hồ sơ
 Submission deadline,Hạn nộp hồ sơ
 Submit BOQ {0} for approval?,Gửi duyệt BOQ {0}?
-Subtotal,Tổng phụ
+Subtotal,Cộng thành tiền
 Target WP,Gói công việc đích
-Tax %,Thuế %
+Tax %,% Thuế
 Tax {0}%,Thuế {0}%
 Template details,Chi tiết mẫu
 Template imported,Đã nhập mẫu
 Template rows,Dòng của mẫu
-Tender,Hồ sơ thầu
+Tender,Đấu thầu / Gói thầu
 Tender created,Đã tạo hồ sơ thầu
 Tender reference,Số tham chiếu hồ sơ thầu
 Tender saved,Đã lưu hồ sơ thầu
-Tenders,Hồ sơ thầu
+Tenders,Các gói thầu
 The assembly's identifier — not editable.,Mã định danh của cụm định mức — không thể sửa.
 The issuing body's reference — a bid can be rejected on this alone.,Số tham chiếu của cơ quan phát hành — hồ sơ dự thầu có thể bị loại chỉ vì sai mục này.
 The per-unit basis — component coefficients mean &quot;how much per one of this unit&quot;.,Cơ sở tính trên mỗi đơn vị — hệ số thành phần là “lượng cần cho một đơn vị này”.
@@ -2687,7 +2687,7 @@ End (day),Kết thúc (ngày)
 Enter a valid email address.,Nhập địa chỉ email hợp lệ.
 Every record row needs a DocType.,Mỗi dòng bản ghi cần có DocType.
 Every report row needs a report or a route.,Mỗi dòng báo cáo cần có báo cáo hoặc đường dẫn.
-Export,Xuất
+Export,Xuất dữ liệu
 Export as JSON,Xuất dưới dạng JSON
 Export permissions,Xuất quyền
 "Export the dataset, reset to defaults, inspect local storage.","Xuất bộ dữ liệu, đặt lại về mặc định, kiểm tra bộ nhớ cục bộ."
@@ -2725,11 +2725,11 @@ Full name is required.,Vui lòng nhập họ và tên.
 General Settings,Cài đặt chung
 Granted roles,Vai trò được cấp
 Green,Xanh lá
-Hidden,Ẩn
+Hidden,Đã ẩn
 Hide all,Ẩn tất cả
 Hired,Thuê ngoài
 Hour,Giờ
-Hours,Giờ
+Hours,Số giờ
 How a new project's record ID is generated. 'Project ID' uses the entered Project ID as the record name; 'Name Series' lets the creator pick a naming series on the New Project form.,Cách tạo ID bản ghi của dự án mới. 'Project ID' dùng mã dự án đã nhập làm tên bản ghi; 'Name Series' cho phép người tạo chọn dãy đặt tên trên biểu mẫu Dự án mới.
 "ID prefixes for Project, Task, BOQ, SCO etc.","Tiền tố ID cho Dự án, Công việc, BOQ, SCO, v.v."
 ISO code. Defaults to INR.,Mã ISO. Mặc định là INR.
@@ -2753,19 +2753,19 @@ Loading usage log…,Đang tải nhật trình sử dụng…
 Loading usage…,Đang tải dữ liệu sử dụng…
 Loading users…,Đang tải người dùng…
 Locked after create per Frappe Naming Series convention.,Bị khóa sau khi tạo theo quy ước Naming Series của Frappe.
-Log Machinery Usage,Ghi nhật trình sử dụng máy
+Log Machinery Usage,Ghi nhận ca máy
 Log usage,Ghi nhật trình sử dụng
 Log usage →,Ghi nhật trình sử dụng →
 Login id — cannot be changed after the user is created.,ID đăng nhập — không thể thay đổi sau khi tạo người dùng.
 Logo uploaded — Save branding to apply.,Đã tải lên logo — nhấn Lưu thương hiệu để áp dụng.
 Machine,Máy
 Machine is required.,Vui lòng chọn máy.
-Machinery,Máy móc
+Machinery,Máy móc thiết bị
 Machinery Register,Sổ đăng ký máy móc
-Machinery Usage,Nhật trình sử dụng máy
+Machinery Usage,Nhật ký sử dụng máy
 Machinery Usage Log,Nhật ký sử dụng máy
 "Master switch. Off → single-company UX: the topbar company switcher is hidden and lists/pickers are not company-scoped. On → the switcher scopes every list, Link/Select picker, and new-record company default to the selected company.","Công tắc chính. Tắt → giao diện một công ty: bộ chuyển công ty trên thanh trên cùng bị ẩn, danh sách/bộ chọn không giới hạn theo công ty. Bật → bộ chuyển giới hạn mọi danh sách, bộ chọn Link/Select và công ty mặc định của bản ghi mới theo công ty đã chọn."
-Mobile,Di động
+Mobile,Điện thoại di động
 Month,Tháng
 Move down,Chuyển xuống
 Move up,Chuyển lên
@@ -2773,11 +2773,11 @@ Multi-company,Đa công ty
 Naming Series,Dãy đặt tên
 New Account,Tài khoản mới
 New Category,Danh mục mới
-New Company,Công ty mới
-New Machinery,Máy móc mới
-New Persona,Vai trò người dùng mới
-New Project Category,Danh mục dự án mới
-New User,Người dùng mới
+New Company,Tạo công ty mới
+New Machinery,Thêm máy thi công mới
+New Persona,Tạo vai trò nghiệp vụ mới
+New Project Category,Tạo loại hình dự án mới
+New User,Tạo người dùng mới
 New account,Tài khoản mới
 No accounts yet — add your bank and cash accounts.,Chưa có tài khoản — hãy thêm tài khoản ngân hàng và tiền mặt.
 No companies match this search.,Không có công ty nào khớp với tìm kiếm này.
@@ -2795,7 +2795,7 @@ No usage logged yet.,Chưa có nhật trình sử dụng.
 No users match this search.,Không có người dùng nào khớp với tìm kiếm này.
 No workspaces configured.,Chưa cấu hình không gian làm việc.
 On,Bật
-Onboarding,Hướng dẫn ban đầu
+Onboarding,Thiết lập ban đầu
 Only the System Manager role can create companies.,Chỉ vai trò System Manager mới có thể tạo công ty.
 Optional — contact number for this user.,Tùy chọn — số liên hệ của người dùng này.
 Optional — owned fixed asset.,Tùy chọn — tài sản cố định thuộc sở hữu.
@@ -2812,12 +2812,12 @@ Password reset link,Liên kết đặt lại mật khẩu
 Password-reset link queued,Liên kết đặt lại mật khẩu đã được xếp hàng gửi
 People who can log in. Role assignment and enabled status.,Những người có thể đăng nhập. Phân vai trò và trạng thái kích hoạt.
 Persistence model,Mô hình lưu trữ
-Persona,Vai trò người dùng
+Persona,Vai trò nghiệp vụ
 Persona created,Đã tạo vai trò người dùng
 Persona deleted,Đã xóa vai trò người dùng
 Persona name,Tên vai trò người dùng
 Persona saved,Đã lưu vai trò người dùng
-Personas,Vai trò người dùng
+Personas,Vai trò nghiệp vụ (Personas)
 Petty Cash Account,Tài khoản quỹ tiền mặt nhỏ
 Pick a machine…,Chọn máy…
 Pick a persona.,Chọn vai trò người dùng.
@@ -2831,14 +2831,14 @@ Position in the persona dropdown.,Vị trí trong danh sách chọn vai trò ng�
 Pre-fills the Project type field on new projects.,Điền sẵn trường Loại dự án khi tạo dự án mới.
 Preview,Xem trước
 Print Templates,Mẫu in
-Project Categories,Danh mục dự án
+Project Categories,Danh mục loại hình dự án
 Project Settings saved,Đã lưu Cài đặt dự án
 Project defaults,Mặc định dự án
 Project is required.,Vui lòng chọn dự án.
 Project naming,Đặt tên dự án
 Project page tabs,Các tab trang dự án
 Prototype dataset · export · reset · localStorage inspector,Bộ dữ liệu mẫu · xuất · đặt lại · trình kiểm tra localStorage
-Quantity,Số lượng
+Quantity,Khối lượng / Số lượng
 Rate (₹),Đơn giá (₹)
 Rate Unit,Đơn vị đơn giá
 Rate unit,Đơn vị đơn giá
@@ -2863,8 +2863,8 @@ Restoring…,Đang khôi phục…
 "Role definitions, workspace visibility and record-level permissions.","Định nghĩa vai trò, khả năng hiển thị không gian làm việc và quyền ở cấp bản ghi."
 Role permissions,Quyền theo vai trò
 Role permissions exported.,Đã xuất quyền theo vai trò.
-Roles,Vai trò
-Roles & Permissions,Vai trò và quyền
+Roles,Các vai trò
+Roles & Permissions,Vai trò & Phân quyền
 Rose,Hồng
 Route,Đường dẫn
 "SMTP, notification rules, email templates, recipients.","SMTP, quy tắc thông báo, mẫu email, người nhận."
@@ -2903,7 +2903,7 @@ Slug,Slug
 Sort order,Thứ tự sắp xếp
 Stable identifier — locked after create.,Mã định danh cố định — bị khóa sau khi tạo.
 Start (day),Bắt đầu (ngày)
-Subject,Tiêu đề
+Subject,Tiêu đề / Nội dung
 System,Hệ thống
 Task…,Công việc…
 Template saved,Đã lưu mẫu
@@ -2928,9 +2928,9 @@ Unsaved branding changes,Thay đổi thương hiệu chưa lưu
 Upload failed,Tải lên thất bại
 Upload logo,Tải lên logo
 Upload returned no file URL.,Tải lên không trả về URL tệp.
-Usage,Sử dụng
+Usage,Mức sử dụng
 Usage logs ({0}),Nhật trình sử dụng ({0})
-Used,Đã dùng
+Used,Đã sử dụng
 Used as the login id + destination for the welcome and password-reset emails.,Được dùng làm ID đăng nhập và địa chỉ nhận email chào mừng và email đặt lại mật khẩu.
 User deleted,Đã xóa người dùng
 User updated,Đã cập nhật người dùng
@@ -3016,7 +3016,7 @@ Recent usage,Sử dụng gần đây
 View all,Xem tất cả
 Register,Sổ đăng ký
 No machines registered.,Chưa đăng ký máy nào.
-Procurement Dashboard,Bảng điều khiển mua sắm vật tư
+Procurement Dashboard,Bảng điều khiển mua sắm
 "Open material requests, on-order value, site receipts and rate variances at a glance.","Tổng quan yêu cầu vật tư đang mở, giá trị đã đặt hàng, phiếu nhập kho tại công trường và chênh lệch đơn giá."
 Supplier Bills,Hóa đơn mua của nhà cung cấp
 Approved requests to order,Yêu cầu đã duyệt chờ đặt hàng
@@ -3058,11 +3058,11 @@ Date range: This quarter,Khoảng thời gian: Quý này
 Check the report tile on the Site Execution workspace.,Kiểm tra ô báo cáo trong không gian làm việc Thi công công trường.
 You don't have access to Project Finance.,Bạn không có quyền truy cập Tài chính dự án.
 "Cash & bank balances, quick actions and alerts.","Số dư tiền mặt và ngân hàng, thao tác nhanh và cảnh báo."
-Transactions,Giao dịch
+Transactions,Các giao dịch
 "Price book for materials, labour, and equipment.","Bảng giá vật tư, nhân công và thiết bị."
 Rate-analysis recipes built from rate-master resources.,Công thức phân tích đơn giá xây dựng từ các tài nguyên trong Danh mục đơn giá.
 Reusable BOQ skeletons of assemblies and resources.,Khung Bảng khối lượng (BOQ) có thể tái sử dụng gồm các cụm định mức và tài nguyên.
-Subcontractor Dashboard,Bảng điều khiển nhà thầu phụ
+Subcontractor Dashboard,Bảng điều khiển thầu phụ
 "Open commitments, work order momentum and active subcontractors at a glance.","Tổng quan cam kết đang mở, tiến độ lệnh giao việc và các nhà thầu phụ đang hoạt động."
 "Open commitments, billing momentum, and certified measurements at a glance.","Tổng quan cam kết đang mở, tiến độ thanh toán và khối lượng đã xác nhận."
 Open work orders,Lệnh giao việc đang mở
@@ -3256,7 +3256,7 @@ Cold,Lạnh
 Comment,Ghi chú
 Company mismatch,Không khớp công ty
 Company {0} does not exist.,Công ty {0} không tồn tại.
-Complete,Hoàn tất
+Complete,Hoàn thành
 Completed Task Count,Số công việc đã hoàn thành
 Component Count,Số thành phần
 Construction Rate History,Lịch sử đơn giá xây dựng
@@ -3356,7 +3356,7 @@ Fetch from Work Order,Lấy từ Lệnh giao việc
 Field Attendance Employee,Nhân sự chấm công công trường
 Field Attendance is governed by a workflow — use a workflow action.,Chấm công công trường tuân theo quy trình duyệt — hãy sử dụng thao tác trong quy trình duyệt.
 Field employee {0} no longer exists.,Nhân sự công trường {0} không còn tồn tại.
-Final,Quyết toán
+Final,Cuối cùng / Quyết toán
 First name is required.,Bắt buộc nhập tên.
 Flag,Cờ đánh dấu
 Flat discount amount (overrides the % when set).,Số tiền chiết khấu cố định (ghi đè tỷ lệ % khi được nhập).
@@ -3386,14 +3386,14 @@ Items Count,Số lượng mặt hàng
 Items in PO,Mặt hàng trong đơn đặt hàng
 "JSON list of {task, exp_start_date, exp_end_date} captured at snapshot time.","Danh sách JSON gồm {task, exp_start_date, exp_end_date} được lưu tại thời điểm chụp bản ghi."
 Joining Date not found for Employee {0},Không tìm thấy Ngày vào làm của nhân viên {0}
-Journal Entry,Bút toán
+Journal Entry,Bút toán nhật ký
 Kind,Phân loại
 Labour Rate,Đơn giá nhân công
 Labour Trade,Ngành nghề nhân công
 Ledger,Sổ cái
 Length,Chiều dài
 Line Type,Loại dòng
-Lines,Các dòng
+Lines,Các dòng chi tiết
 Link an Assembly to this item before exploding it.,Hãy liên kết một Cụm định mức với hạng mục này trước khi phân rã.
 Linked Task,Công việc liên kết
 Logged By,Người ghi nhận
@@ -3409,13 +3409,13 @@ Margin Amount,Giá trị biên lợi nhuận
 Margin Rate,Tỷ lệ biên lợi nhuận
 Market revision,Điều chỉnh theo giá thị trường
 Masters,Danh mục gốc
-Material Request,Yêu cầu vật tư
+Material Request,Yêu cầu vật tư (MR)
 Mean Progress,Tiến độ trung bình
 Measured By,Người đo đạc
 Measured Qty,Khối lượng nghiệm thu
 Measured To Date,Lũy kế nghiệm thu đến nay
 Measured Total,Tổng khối lượng nghiệm thu
-Measurement Book,Sổ nghiệm thu khối lượng
+Measurement Book,Sổ đo bóc khối lượng (MB)
 Measurement Book Entry,Dòng sổ nghiệm thu khối lượng
 Members Count,Số lượng thành viên
 Metrics,Chỉ số
@@ -3486,8 +3486,8 @@ Others,Khác
 Overdue (days),Quá hạn (ngày)
 Overhead,Chi phí quản lý chung
 Overtime Date,Ngày làm thêm giờ
-Overtime Hours,Số giờ làm thêm
-Overtime Rate,Đơn giá làm thêm giờ
+Overtime Hours,Số giờ tăng ca
+Overtime Rate,Đơn giá tăng ca
 Overtime Wage Calculated,Tiền lương làm thêm giờ đã tính
 "Overtime Wage is not update, Contact Admin to update.","Đơn giá làm thêm giờ chưa được cập nhật, vui lòng liên hệ Quản trị viên."
 Overtime hours cannot be zero!,Số giờ làm thêm không được bằng 0!
@@ -3503,12 +3503,12 @@ Persona Name,Tên vai trò người dùng
 Persona Role,Vai trò hệ thống
 Persona name is required.,Bắt buộc nhập tên vai trò người dùng.
 Persona not found.,Không tìm thấy vai trò người dùng.
-Petty Cash Request,Yêu cầu quỹ tiền mặt nhỏ
+Petty Cash Request,Đề nghị chi tiền mặt
 Petty Cash Request {0} is already disbursed by {1}.,Yêu cầu quỹ tiền mặt nhỏ {0} đã được giải ngân bởi {1}.
 Petty Cash Request {0} is {1} — only a Requested one can be disbursed.,Yêu cầu quỹ tiền mặt nhỏ {0} đang ở trạng thái {1} — chỉ yêu cầu ở trạng thái Đã yêu cầu mới được giải ngân.
 Petty Cash account not found for company {0}. Contact Accounts Manager.,Không tìm thấy tài khoản Quỹ tiền mặt nhỏ cho công ty {0}. Vui lòng liên hệ Kế toán trưởng.
 Petty Cash account not found for {0}.,Không tìm thấy tài khoản Quỹ tiền mặt nhỏ cho {0}.
-Photo,Ảnh
+Photo,Hình ảnh
 Pick Cost Code,Chọn mã chi phí
 Pick a Frappe Report — its Desk route + name are used when Route is blank.,Chọn một Báo cáo Frappe — đường dẫn Desk và tên báo cáo sẽ được dùng khi trường Đường dẫn để trống.
 Pick a purchase order to receive against.,Hãy chọn đơn đặt hàng để nhận hàng.
@@ -3529,13 +3529,13 @@ Progress can't go backwards — {0}% is below the task's current progress ({1}%)
 Project Assigned,Dự án được phân công
 Project Naming,Quy tắc đặt mã dự án
 Project Tab Visibility,Hiển thị tab dự án
-Project Team,Nhóm dự án
+Project Team,Ban chỉ huy / Đội dự án
 Project naming must be one of {0}.,Quy tắc đặt mã dự án phải thuộc một trong các giá trị {0}.
 Project not found.,Không tìm thấy dự án.
 Project {0} has no company set.,Dự án {0} chưa được gán công ty.
 Purchase Invoice is governed by a workflow — use a workflow action.,Hóa đơn mua hàng tuân theo quy trình duyệt — hãy sử dụng thao tác trong quy trình duyệt.
-Purchase Order,Đơn đặt hàng
-Purchase Receipt,Phiếu nhập kho
+Purchase Order,Đơn đặt hàng (PO)
+Purchase Receipt,Phiếu nhập mua hàng
 Purchase-driven,Theo đơn mua hàng
 Qty Per Unit,Định mức trên một đơn vị
 Qty Unit,Đơn vị tính
@@ -3552,7 +3552,7 @@ Rate History,Lịch sử đơn giá
 Rate Master Category,Danh mục đơn giá chuẩn
 Rate Master Update Threshold (%),Ngưỡng cảnh báo cập nhật Danh mục đơn giá (%)
 Rate Per Unit,Đơn giá trên đơn vị
-Records,Bản ghi
+Records,Các bản ghi
 "Records an audit row (old → new, source PO, user) in the rate history.","Ghi lại dòng lịch sử kiểm toán (giá cũ → giá mới, đơn đặt hàng nguồn, người thực hiện) vào lịch sử đơn giá."
 Recoverable from Client,Thu hồi từ chủ đầu tư
 Recoverable from the client (vs. absorbed internally).,Có thể thu hồi từ chủ đầu tư (thay vì công ty tự chịu chi phí).
@@ -3567,13 +3567,13 @@ Resource Name,Tên nguồn lực
 Resource Type,Loại nguồn lực
 Responsible Party,Bên chịu trách nhiệm
 Restrict To Roles,Giới hạn theo vai trò
-Retention Held,Tiền giữ lại bảo hành
-Retention Release,Hoàn trả tiền giữ lại
+Retention Held,Bảo hành đang giữ lại
+Retention Release,Giải tỏa tiền bảo hành
 Reverse the disbursement before deleting.,Hãy hoàn tác giải ngân trước khi xóa.
-Revised,Đã sửa đổi
+Revised,Đã điều chỉnh
 Revised from rejected stage {0},Đã sửa đổi từ giai đoạn bị từ chối {0}
 Revised — reopened to Draft,Đã sửa đổi — mở lại về trạng thái Nháp
-Rework,Làm lại
+Rework,Làm lại / Sửa lỗi
 Role In Crew,Vai trò trong tổ đội
 Role not permitted for this workspace,Vai trò không được phép truy cập không gian làm việc này
 Role {0} can't be granted this report — it can't view the {1} workspace. ,Không thể cấp quyền báo cáo này cho vai trò {0} — vai trò này không có quyền xem không gian làm việc {1}. 
@@ -3600,7 +3600,7 @@ Same As Last Day,Giống ngày hôm trước
 Schedule & Cost,Tiến độ & Chi phí
 Schedule Snapshot,Bản chụp tiến độ
 Schedule of Values,Bảng giá trị thanh toán
-Scope Change Order,Lệnh thay đổi phạm vi
+Scope Change Order,Lệnh thay đổi phạm vi (SCO)
 Scope Change Order Activity,Lịch sử lệnh thay đổi phạm vi
 Search Employee,Tìm kiếm nhân viên
 Seeded Default,Mặc định khởi tạo sẵn
@@ -3611,7 +3611,7 @@ Select the cash/bank account the float comes from.,Chọn tài khoản tiền m�
 Select the cash/bank account to pay from.,Chọn tài khoản tiền mặt/ngân hàng để chi trả.
 Select who is receiving the float.,Chọn người nhận quỹ tạm ứng.
 Self approval is not allowed,Không được phép tự phê duyệt
-Series,Dãy ký hiệu
+Series,Quy tắc đánh số (Series)
 Set as Completed,Đặt là Hoàn thành
 Set as Yet To Start,Đặt là Chưa bắt đầu
 Set on the personas seeded by BuildSuite. Informational only.,Đánh dấu trên các vai trò người dùng do BuildSuite khởi tạo sẵn. Chỉ mang tính thông tin.
@@ -3641,7 +3641,7 @@ Statutory,Theo quy định pháp luật
 Stock Entry is governed by a workflow — use a workflow action.,Phiếu xuất nhập kho tuân theo quy trình duyệt — hãy sử dụng thao tác trong quy trình duyệt.
 Storm,Bão
 Subcontract Delivery Type,Hình thức giao thầu phụ
-Subcontractor Bill,Hóa đơn nhà thầu phụ
+Subcontractor Bill,Hồ sơ thanh toán thầu phụ
 Subcontractor Bill Line,Dòng hóa đơn nhà thầu phụ
 Subcontractor Bill Tax,Thuế hóa đơn nhà thầu phụ
 Subcontractor Bill is governed by a workflow — use a workflow action.,Hóa đơn nhà thầu phụ tuân theo quy trình duyệt — hãy sử dụng thao tác trong quy trình duyệt.
@@ -3673,12 +3673,12 @@ Task {0} does not belong to project {1}.,Công việc {0} không thuộc dự á
 Task {0} is already Completed — no further progress entries can be added.,Công việc {0} đã Hoàn thành — không thể thêm phiếu tiến độ mới.
 Tax Amount,Tiền thuế
 Tax Category,Danh mục thuế
-Tax Template,Biểu mẫu thuế
+Tax Template,Mẫu thuế
 Tax account {0} does not belong to company {1}.,Tài khoản thuế {0} không thuộc công ty {1}.
 Tax row #{0}: account {1} does not belong to company {2}.,Dòng thuế #{0}: tài khoản {1} không thuộc công ty {2}.
 Tax template {0} belongs to a different company — pick one for {1} (this project's company).,Biểu mẫu thuế {0} thuộc công ty khác — hãy chọn biểu mẫu của {1} (công ty của dự án này).
 Taxable Value,Giá trị tính thuế
-Taxes,Thuế
+Taxes,Thuế & Phí
 Taxes & Charges,Thuế & Phí
 Template Code,Mã mẫu
 Template Name,Tên mẫu
@@ -3727,13 +3727,13 @@ Three-envelope,Ba túi hồ sơ
 Tick at least one row to update.,Hãy đánh dấu ít nhất một dòng để cập nhật.
 Tile title. Falls back to the DocType's own label when blank.,Tiêu đề ô. Nếu để trống sẽ lấy theo nhãn gốc của DocType.
 Tile title. Falls back to the linked report's name when blank.,Tiêu đề ô. Nếu để trống sẽ lấy theo tên của báo cáo liên kết.
-Total Amount,Tổng tiền
+Total Amount,Tổng số tiền
 Total Qty,Tổng khối lượng
 Total Taxes,Tổng tiền thuế
 Total Value,Tổng giá trị
 Totals,Tổng cộng
-Trade Name,Tên ngành nghề
-Trigger,Tác nhân kích hoạt
+Trade Name,Tên hạng mục / Bộ môn
+Trigger,Kích hoạt
 Two-envelope,Hai túi hồ sơ
 Type Name,Tên loại
 Unknown Project Category {0}.,Danh mục dự án không xác định: {0}.
@@ -3749,7 +3749,7 @@ Updating Rate Masters…,Đang cập nhật Danh mục đơn giá…
 User Name,Tên người dùng
 User not found.,Không tìm thấy người dùng.
 User {0} attempted to access BuildSuite Core without an allowed role.,Người dùng {0} đã cố truy cập BuildSuite Core khi chưa có vai trò được phép.
-Variance %,% chênh lệch
+Variance %,% Chênh lệch
 View all →,Xem tất cả →
 Visibility,Phạm vi hiển thị
 Visible To Roles,Hiển thị cho các vai trò
@@ -3883,3 +3883,1436 @@ Failed to import BOQ file,Không thể nhập tệp BOQ
 File content is empty.,Nội dung tệp đang trống.
 The uploaded file contains no rows.,Tệp tải lên không có dòng dữ liệu nào.
 No valid BOQ item rows were found in the uploaded file.,Không tìm thấy dòng hạng mục BOQ hợp lệ nào trong tệp tải lên.
+0 across workspaces,0 trên các không gian làm việc
+1 day,1 ngày
+14 days,14 ngày
+1Y,1 năm
+2 across workspaces,2 trên các không gian làm việc
+24 across workspaces,24 trên các không gian làm việc
+3 across workspaces,3 trên các không gian làm việc
+3 days,3 ngày
+30 days,30 ngày
+30D,30 ngày
+5 across workspaces,5 trên các không gian làm việc
+7 days,7 ngày
+7D,7 ngày
+90 days,90 ngày
+90D,90 ngày
+ALL,TẤT CẢ
+All time,Toàn thời gian
+Allocated Cost,Chi phí phân bổ
+Allocated Costs,Chi phí phân bổ
+Access Denied,Truy cập bị từ chối
+Accounting Hub,Trung tâm Kế toán
+Accounting Ledger,Sổ cái kế toán
+Accounting Ledgers,Sổ cái kế toán
+Accounting Mode,Chế độ kế toán
+Accounts Payable,Công nợ phải trả
+Accounts Receivable,Công nợ phải thu
+Add Photo Row,Thêm dòng ảnh
+Add Task,Thêm công việc
+Add filter,Thêm bộ lọc
++ Add filter,+ Thêm bộ lọc
++ Add Row,+ Thêm dòng
+Add row,Thêm dòng
+Adding...,Đang thêm...
+Adjustment,Điều chỉnh
+Advance Requests,Yêu cầu tạm ứng
+Advance Return,Hoàn ứng
+Advanced Accounting Hub,Trung tâm Kế toán nâng cao
+Allocated Projects,Dự án được phân bổ
+Allow Negative Stock,Cho phép tồn kho âm
+Already billed,Đã lập hóa đơn
+Amendment,Điều chỉnh / Phụ lục
+Amount (VND),Số tiền (VNĐ)
+Analytics,Phân tích
+Applying...,Đang áp dụng...
+Attendance Matrix,Bảng chấm công
+Attendance Record,Bản ghi chấm công
+Approve Selected,Phê duyệt mục đã chọn
+Approved Claims,Hồ sơ thanh toán đã duyệt
+Are you sure?,Bạn có chắc chắn không?
+Are you sure you want to delete this row?,Bạn có chắc chắn muốn xóa dòng này không?
+Assign Role,Gán vai trò
+Assigned,Đã phân công
+At Risk,Có rủi ro
+Auto-filled from rate card,Tự động điền từ bảng đơn giá
+Available Balance,Số dư khả dụng
+Avg Daily Burn,Chi phí bình quân/ngày
+Back,Quay lại
+Back to List,Quay lại danh sách
+Back to Project,Quay lại dự án
+Balance Due,Số dư còn phải trả
+Bank Account,Tài khoản ngân hàng
+Bank Balance,Số dư ngân hàng
+Bank Accounts,Tài khoản ngân hàng
+Base Amount,Số tiền gốc
+Base Contract,Hợp đồng gốc
+Bid Comparison,So sánh giá dự thầu
+Billable,Tính phí
+Billed Amount,Số tiền đã lập hóa đơn
+Billed To Date,Lũy kế đã lập hóa đơn
+Billing Progress,Tiến độ thanh toán
+BOQ & Estimating,BOQ & Dự toán
+BOQ Breakdown,Chi tiết tiên lượng (BOQ)
+BOQ Code,Mã công tác BOQ
+BOQ Items,Các hạng mục BOQ
+BOQ Line,Dòng BOQ
+BOQ Lines,Các dòng BOQ
+BOQ Summary,Tổng hợp BOQ
+BOQ Total,Tổng giá trị BOQ
+BOQ Version,Phiên bản BOQ
+BOQ file imported successfully,Nhập file BOQ thành công
+BOQ exported successfully,Xuất file BOQ thành công
+Import File,Nhập từ file
+Import BOQ,Nhập BOQ
+Importing...,Đang nhập...
+Exporting...,Đang xuất...
+Download Template,Tải file mẫu
+Budget Health,Tình trạng ngân sách
+Budget Remaining,Ngân sách còn lại
+Budget Utilization,Tỷ lệ sử dụng ngân sách
+Budget Variance,Chênh lệch ngân sách
+Budget vs Actual,Ngân sách so với Thực tế
+Budgeted,Dự toán
+Budgeted Cost,Chi phí dự toán
+BuildSuite,BuildSuite
+Burn Rate,Tốc độ chi tiêu
+By Category,Theo danh mục
+By Cost Code,Theo mã chi phí
+By Project,Theo dự án
+By Status,Theo trạng thái
+By Supplier,Theo nhà cung cấp
+By Trade,Theo hạng mục thi công
+"CSV or Excel (.csv, .xlsx)","File CSV hoặc Excel (.csv, .xlsx)"
+Calculated automatically,Được tính tự động
+Calendar,Lịch
+Cancel Document,Hủy chứng từ
+Cannot be undone,Không thể hoàn tác
+Carry Forward,Chuyển tiếp kỳ sau
+Cash Balance,Số dư tiền mặt
+Cash Flow,Dòng tiền
+Cash Flow Forecast,Dự báo dòng tiền
+Cash In,Tiền vào
+Cash Out,Tiền ra
+Cash Position,Vị thế tiền mặt
+Categories,Danh mục
+Change Order,Lệnh thay đổi (VO)
+Change Orders,Các lệnh thay đổi (VO)
+Change Status,Đổi trạng thái
+Chart of Accounts,Hệ thống tài khoản
+Check In,Giờ vào
+Check Out,Giờ ra
+Checked By,Người kiểm tra
+Checklist,Danh mục kiểm tra
+Child Table,Bảng chi tiết
+Choose file,Chọn tệp
+Choose files,Chọn các tệp
+Claim,Đề nghị thanh toán
+Claim Amount,Giá trị đề nghị thanh toán
+Claim Date,Ngày đề nghị
+Claim History,Lịch sử thanh toán
+Claim Lines,Chi tiết đề nghị thanh toán
+Claim Number,Số đề nghị thanh toán
+Claim Summary,Tổng hợp đề nghị thanh toán
+Claim Type,Loại đề nghị thanh toán
+Claimed,Đã đề nghị
+Claimed To Date,Lũy kế đã đề nghị
+Claims,Đề nghị thanh toán
+Clear All,Xóa tất cả
+Clear selection,Bỏ chọn
+Client Billing,Thanh toán với Chủ đầu tư
+Client Claims,Hồ sơ thanh toán Chủ đầu tư
+Client Contract,Hợp đồng Chủ đầu tư
+Client Invoices,Hóa đơn Chủ đầu tư
+Client Name,Tên khách hàng
+Client Portal,Cổng thông tin khách hàng
+Closing Balance,Số dư cuối kỳ
+Collapse All,Thu gọn tất cả
+Collected,Đã thu
+Collection Rate,Tỷ lệ thu hồi
+Columns,Cột
+Commercial Hub,Trung tâm Thương mại
+Commercial Summary,Tổng hợp thương mại
+Committed Cost,Chi phí đã cam kết
+Company Context,Ngữ cảnh công ty
+Company Profile,Hồ sơ công ty
+Company Settings,Cài đặt công ty
+Compare,So sánh
+Comparison,Bảng so sánh
+Completion %,% Hoàn thành
+Completion Date,Ngày hoàn thành
+Compliance,Tuân thủ
+Confirm,Xác nhận
+Confirm Action,Xác nhận thao tác
+Confirm Delete,Xác nhận xóa
+Confirmation,Xác nhận
+Connected,Đã kết nối
+Construction,Thi công xây dựng
+Consumed Qty,SL đã xuất dùng
+Contact Person,Người liên hệ
+Contact Phone,Số điện thoại liên hệ
+Contingency,Dự phòng phí
+Continue,Tiếp tục
+Contract,Hợp đồng
+Contract Amount,Giá trị hợp đồng
+Contract Value,Giá trị hợp đồng
+Contract Summary,Tóm tắt hợp đồng
+Contract Type,Loại hợp đồng
+Contracts,Hợp đồng
+Control,Kiểm soát
+Controlled,Được kiểm soát
+Convert,Chuyển đổi
+Convert to PO,Chuyển thành Đơn đặt hàng (PO)
+Convert to Project,Chuyển thành Dự án
+Converted,Đã chuyển đổi
+Copy,Sao chép
+Copied,Đã sao chép
+Cost,Chi phí
+Cost Breakdown,Cơ cấu chi phí
+Cost Centers,Trung tâm chi phí
+Cost Codes,Mã chi phí
+Cost Control,Kiểm soát chi phí
+Cost Element,Yếu tố chi phí
+Cost Forecast,Dự báo chi phí
+Cost Summary,Tổng hợp chi phí
+Cost To Complete,Chi phí cần để hoàn thành (ETC)
+Cost Tracking,Theo dõi chi phí
+Cost Variance,Chênh lệch chi phí
+Count,Số lượng
+Create New,Tạo mới
+Create Customer,Tạo khách hàng
+Create Item,Tạo vật tư / hạng mục
+Create PO,Tạo đơn mua hàng (PO)
+Create Project,Tạo dự án
+Create RFQ,Tạo yêu cầu báo giá (RFQ)
+Create Task,Tạo công việc
+Created By,Người tạo
+Created On,Ngày tạo
+Creating...,Đang tạo...
+Credit,Có
+Credit Limit,Hạn mức tín dụng
+Credit Note,Phiếu giảm giá / Ghi có
+Crew Size,Quy mô tổ đội
+Critical,Nghiêm trọng / Đường găng
+Critical Path,Đường găng
+Cumulative,Lũy kế
+Current,Hiện tại
+Current Balance,Số dư hiện tại
+Current Month,Tháng hiện tại
+Current Period,Kỳ hiện tại
+Current Progress,Tiến độ hiện tại
+Current Status,Trạng thái hiện tại
+Current Value,Giá trị hiện tại
+Current Version,Phiên bản hiện tại
+Daily Log,Nhật ký công trường
+Daily Logs,Nhật ký công trường
+Daily Report,Báo cáo ngày
+Daily Reports,Báo cáo ngày
+Daily Site Log,Nhật ký thi công hàng ngày
+Daily Wage,Lương ngày
+Dark,Tối
+Data,Dữ liệu
+Date Range,Khoảng thời gian
+Date From,Từ ngày
+Date To,Đến ngày
+Days Delayed,Số ngày trễ
+Days Left,Số ngày còn lại
+Days Overdue,Số ngày quá hạn
+Days Remaining,Số ngày còn lại
+Debit,Nợ
+Decision,Quyết định
+Decisions,Các quyết định
+Deductions,Các khoản khấu trừ
+Defect,Lỗi / Khiếm khuyết
+Defects,Danh sách lỗi
+Delay,Chậm tiến độ
+Delay Days,Số ngày chậm
+Delay Reason,Nguyên nhân chậm tiến độ
+Delayed Stages,Giai đoạn trễ tiến độ
+Delayed Tasks,Công việc trễ tiến độ
+Delete Row,Xóa dòng
+Delete Selected,Xóa mục đã chọn
+Deleting...,Đang xóa...
+Delivered Qty,SL đã giao
+Delivery,Giao hàng
+Delivery Date,Ngày giao hàng
+Delivery Note,Phiếu giao hàng
+Delivery Notes,Phiếu giao hàng
+Delivery Status,Trạng thái giao hàng
+Department,Phòng ban
+Departments,Các phòng ban
+Deposit,Tiền đặt cọc / Nộp tiền
+Designation,Chức danh
+Detail,Chi tiết
+Difference,Chênh lệch
+Direct Cost,Chi phí trực tiếp
+Direct Costs,Chi phí trực tiếp
+Disable,Vô hiệu hóa
+Discard,Hủy bỏ
+Discount %,% Chiết khấu
+Dismiss,Bỏ qua
+Dispatched,Đã điều phối
+Display Name,Tên hiển thị
+DocStatus,Trạng thái chứng từ
+Document,Chứng từ / Tài liệu
+Document Date,Ngày chứng từ
+Document Type,Loại chứng từ
+Documents,Hồ sơ / Tài liệu
+Done,Hoàn tất
+Download,Tải xuống
+Download PDF,Tải PDF
+Drawing,Bản vẽ
+Drawings,Bản vẽ
+Due Date,Ngày đến hạn
+Due Soon,Sắp đến hạn
+Duplicate,Nhân bản
+Duration (Days),Thời gian (Ngày)
+Edit Row,Sửa dòng
+Efficiency,Hiệu suất
+Email Address,Địa chỉ Email
+Empty,Trống
+Enable,Bật / Kích hoạt
+End Date,Ngày kết thúc
+End Time,Giờ kết thúc
+Ending Balance,Số dư cuối kỳ
+Engineer,Kỹ sư
+Enter value...,Nhập giá trị...
+Equipment Cost,Chi phí máy thi công
+Equipment Log,Nhật ký máy thi công
+Equipment Logs,Nhật ký máy thi công
+Equipment Rate,Đơn giá ca máy
+Equipment Type,Loại thiết bị
+Equipment Usage,Sử dụng thiết bị
+Error,Lỗi
+Estimate,Dự toán
+Estimate At Completion,Dự báo chi phí khi hoàn thành (EAC)
+Estimated Cost,Chi phí dự toán
+Estimated Hours,Số giờ dự kiến
+Estimated Qty,Khối lượng dự toán
+Estimated Rate,Đơn giá dự toán
+Estimating,Lập dự toán
+Evaluation,Đánh giá
+Exchange Rate,Tỷ giá
+Exclude,Loại trừ
+Execution,Thi công / Thực hiện
+Expand All,Mở rộng tất cả
+Expected Completion,Dự kiến hoàn thành
+Expected Date,Ngày dự kiến
+Expected Delivery,Ngày giao dự kiến
+Expense,Chi phí
+Expense Claim,Đề nghị thanh toán chi phí
+Expense Claims,Đề nghị thanh toán chi phí
+Expense Head,Khoản mục chi phí
+Expense Type,Loại chi phí
+Expired,Đã hết hạn
+Expiry Date,Ngày hết hạn
+Failed,Thất bại
+Failed to load,Không thể tải dữ liệu
+Failed to load data,Không thể tải dữ liệu
+Field,Hiện trường / Trường dữ liệu
+Field Operations,Vận hành công trường
+Field Team,Đội ngũ hiện trường
+Field Workforce,Lực lượng thi công
+File Name,Tên tệp
+Filter,Bộ lọc
+Filter by...,Lọc theo...
+Final Amount,Giá trị quyết toán
+Final Claim,Quyết toán đợt cuối
+Finance,Tài chính & Kế toán
+Finance & Accounting,Tài chính & Kế toán
+Financial,Tài chính
+Financial Summary,Tóm tắt tài chính
+Finish,Hoàn thành
+Finish Date,Ngày kết thúc
+First,Đầu tiên
+Fiscal Year,Năm tài chính
+Fixed,Cố định
+Fixed Price,Giá trọn gói
+Floor,Tầng
+Folder,Thư mục
+Follow Up,Theo dõi
+Forecast,Dự báo
+Forecast Cost,Chi phí dự báo
+Forecast Margin,Biên lợi nhuận dự báo
+Foreman,Đội trưởng / Cai thầu
+Form,Biểu mẫu
+Frequency,Tần suất
+From Date,Từ ngày
+From Warehouse,Từ kho
+Fully Billed,Đã xuất hóa đơn đủ
+Fully Delivered,Đã giao hàng đủ
+Fully Paid,Đã thanh toán đủ
+Fully Received,Đã nhận hàng đủ
+General,Thông tin chung
+General Info,Thông tin chung
+General Information,Thông tin chung
+General Ledger,Sổ cái (GL)
+Generate,Tạo / Sinh dữ liệu
+Generate Payroll,Chạy bảng lương
+Generate Report,Tạo báo cáo
+Go Back,Quay lại
+Go to,Đi tới
+Good,Tốt
+Goods Receipt,Phiếu nhập kho (GRN)
+Goods Receipts,Phiếu nhập kho (GRN)
+Gross Amount,Tổng tiền trước thuế/khấu trừ
+Gross Margin,Biên lợi nhuận gộp
+Gross Pay,Tổng thu nhập
+Group By,Nhóm theo
+Handover,Bàn giao
+Head Office,Văn phòng công ty
+Health,Tình trạng
+Help,Trợ giúp
+High Priority,Ưu tiên cao
+History,Lịch sử
+Hold,Tạm dừng / Giữ lại
+Hourly,Theo giờ
+Hourly Rate,Đơn giá giờ công
+Hours Worked,Số giờ làm việc
+Image,Hình ảnh
+Images,Hình ảnh
+In Review,Đang xét duyệt
+In Stock,Còn tồn kho
+In Transit,Đang vận chuyển
+Include,Bao gồm
+Income Account,Tài khoản doanh thu
+Incoming,Thu vào / Nhập vào
+Incomplete,Chưa hoàn thành
+Indirect Cost,Chi phí gián tiếp
+Info,Thông tin
+Information,Thông tin
+Inspections,Nghiệm thu / Kiểm tra
+Inspector,Người nghiệm thu
+Installment,Đợt thanh toán
+Instructions,Hướng dẫn
+Insurance,Bảo hiểm
+Internal Notes,Ghi chú nội bộ
+Internal Transfer,Điều chuyển nội bộ
+Invalid,Không hợp lệ
+Inventory,Kho & Vật tư
+Inventory & Warehouses,Kho & Vật tư
+Inventory Hub,Trung tâm Kho vận
+Inventory Valuation,Định giá tồn kho
+Invoice Amount,Giá trị hóa đơn
+Invoice Date,Ngày hóa đơn
+Invoice Number,Số hóa đơn
+Invoice Status,Trạng thái hóa đơn
+Issue,Vấn đề / Xuất kho
+Issue Date,Ngày phát hành / Ngày xuất
+Issue Material,Xuất vật tư
+Issues,Vấn đề phát sinh
+Item Code,Mã vật tư
+Item Description,Mô tả vật tư
+Item Group,Nhóm vật tư
+Item Groups,Nhóm vật tư
+Item Name,Tên vật tư / Hạng mục
+Job,Công việc
+Journal Entries,Bút toán nhật ký
+KPI,Chỉ số KPI
+KPIs,Các chỉ số KPI
+Labor,Nhân công
+Labor Cost,Chi phí nhân công
+Labor Hours,Giờ công lao động
+Labour Attendance,Chấm công nhân sự
+Labour Cost,Chi phí nhân công
+Language,Ngôn ngữ
+Last,Cuối cùng
+Last 30 Days,30 ngày qua
+Last 7 Days,7 ngày qua
+Last Modified,Cập nhật lần cuối
+Last Month,Tháng trước
+Last Week,Tuần trước
+Late,Trễ hạn
+Latest,Mới nhất
+Lead,Cơ hội / Khách hàng tiềm năng
+Lead Time,Thời gian cung ứng
+Leave,Nghỉ phép
+Ledger Entries,Bút toán sổ cái
+Level,Cấp độ
+Liabilities,Nợ phải trả
+Light,Sáng
+Limit,Hạn mức / Giới hạn
+Line,Dòng
+Line Items,Các dòng chi tiết
+Line Total,Thành tiền
+Linked Documents,Chứng từ liên kết
+List View,Dạng danh sách
+Load More,Tải thêm
+Loading,Đang tải
+Loading...,Đang tải...
+Locations,Vị trí / Địa điểm
+Lock,Khóa
+Locked,Đã khóa
+Log,Nhật ký
+Log Out,Đăng xuất
+Logs,Nhật ký
+Low Priority,Ưu tiên thấp
+Low Stock,Sắp hết hàng
+Lump Sum,Trọn gói
+Main,Chính
+Main Warehouse,Kho chính
+Maintenance,Bảo trì
+Manager,Quản lý
+Mandatory,Bắt buộc
+Manpower,Nhân lực
+Mark All Read,Đánh dấu đã đọc tất cả
+Mark as Complete,Đánh dấu hoàn thành
+Mark as Paid,Đánh dấu đã thanh toán
+Mark as Read,Đánh dấu đã đọc
+Markup,Tỷ lệ cộng thêm (Markup)
+Markup %,% Cộng thêm
+Master Data,Dữ liệu danh mục
+Material Cost,Chi phí vật tư
+Material Issue,Xuất kho vật tư
+Material Receipt,Nhập kho vật tư
+Material Transfer,Điều chuyển vật tư
+Matrix,Ma trận
+Maximum,Tối đa
+Measurement,Đo bóc / Nghiệm thu khối lượng
+Member,Thành viên
+Memo,Ghi chú
+Menu,Trình đơn
+Message,Tin nhắn / Thông báo
+Method,Phương thức
+Milestones,Các mốc tiến độ
+Minimum,Tối thiểu
+Minor,Nhỏ / Thứ yếu
+Minutes,Biên bản / Phút
+Missing,Còn thiếu
+Mode of Payment,Phương thức thanh toán
+Modified,Đã sửa đổi
+Modified By,Người sửa
+Module,Phân hệ
+Modules,Các phân hệ
+Monthly,Hàng tháng
+More,Thêm
+More Actions,Thao tác khác
+Move,Di chuyển
+My Tasks,Công việc của tôi
+My To-Dos,Việc cần làm của tôi
+My Work,Công việc của tôi
+N/A,Không áp dụng
+Navigation,Điều hướng
+Needs Attention,Cần lưu ý
+Net Amount,Giá trị thuần (chưa thuế)
+Net Cash Flow,Dòng tiền thuần
+Net Margin,Biên lợi nhuận ròng
+Net Pay,Thực lĩnh
+New Claim,Tạo đề nghị thanh toán
+New Contract,Tạo hợp đồng mới
+New Item,Tạo vật tư mới
+New Log,Tạo nhật ký mới
+New Order,Tạo đơn hàng mới
+New Payment,Tạo phiếu thanh toán mới
+New Record,Tạo bản ghi mới
+New Request,Tạo yêu cầu mới
+New RFQ,Tạo yêu cầu báo giá (RFQ)
+New Row,Thêm dòng mới
+New Subcontract,Tạo hợp đồng thầu phụ
+New Variation,Tạo phát sinh (VO) mới
+New Warehouse,Tạo kho mới
+Next,Tiếp theo
+Next Month,Tháng sau
+Next Step,Bước tiếp theo
+Next Week,Tuần sau
+No access,Không có quyền truy cập
+No activity yet,Chưa có hoạt động nào
+No data,Không có dữ liệu
+No data available,Không có dữ liệu
+No data found,Không tìm thấy dữ liệu
+No description,Không có mô tả
+No documents found,Không tìm thấy tài liệu nào
+No files attached,Chưa có tệp đính kèm
+No items,Chưa có hạng mục nào
+No items found,Không tìm thấy hạng mục nào
+No lines,Chưa có dòng chi tiết nào
+No lines yet,Chưa có dòng chi tiết nào
+No matching records,Không có bản ghi phù hợp
+No notifications,Không có thông báo nào
+No options,Không có tùy chọn
+No projects found,Không tìm thấy dự án nào
+No records,Không có bản ghi nào
+No records found,Không tìm thấy bản ghi nào
+No records found.,Không tìm thấy bản ghi nào.
+No results,Không có kết quả
+No results found,Không tìm thấy kết quả
+No rows,Chưa có dòng nào
+No rows yet,Chưa có dòng nào
+Norows,Chưa có dòng nào
+No tasks,Chưa có công việc nào
+No tasks found,Không tìm thấy công việc nào
+Not Applicable,Không áp dụng
+Not Authorized,Không có quyền truy cập
+Not Billed,Chưa xuất hóa đơn
+Not Found,Không tìm thấy
+Not Paid,Chưa thanh toán
+Not Started,Chưa bắt đầu
+Notification,Thông báo
+Now,Hiện tại
+Number,Số
+OK,Đồng ý
+Observer,Người quan sát
+Of,của
+Off,Tắt
+Office,Văn phòng
+On Schedule,Đúng tiến độ
+On Time,Đúng hạn
+On Track,Đúng tiến độ
+Once,Một lần
+Only,Chỉ
+Open Document,Mở chứng từ
+Opening,Đầu kỳ
+Opening Balance,Số dư đầu kỳ
+Opening Stock,Tồn kho đầu kỳ
+Operations,Vận hành
+Optional,Tùy chọn
+Options,Tùy chọn
+Order Date,Ngày đặt hàng
+Order Status,Trạng thái đơn hàng
+Order Total,Tổng giá trị đơn hàng
+Ordered Qty,SL đã đặt
+Orders,Đơn hàng
+Organization,Tổ chức
+Original,Ban đầu / Gốc
+Original Budget,Ngân sách ban đầu
+Original Contract,Hợp đồng gốc
+Original Estimate,Dự toán ban đầu
+Out of Stock,Hết hàng
+Outgoing,Chi ra / Xuất đi
+Outstanding Amount,Số tiền còn nợ
+Overall,Tổng thể
+Overall Progress,Tiến độ tổng thể
+Overall Status,Trạng thái tổng thể
+Overbudget,Vượt ngân sách
+Overdue Invoices,Hóa đơn quá hạn
+Overdue Tasks,Công việc quá hạn
+Owner,Người phụ trách / Chủ sở hữu
+PDF,PDF
+PO Amount,Giá trị PO
+PO Date,Ngày PO
+PO Number,Số PO
+PO Status,Trạng thái PO
+POs,Các đơn mua hàng (PO)
+Pack,Đóng gói / Gói
+Package,Gói thầu / Hạng mục
+Packages,Các gói thầu
+Page,Trang
+Paid Amount,Số tiền đã trả
+Paid To Date,Lũy kế đã thanh toán
+Parent,Cấp cha
+Parent Account,Tài khoản cha
+Parent Project,Dự án cha
+Parent Task,Công việc cha
+Partial,Một phần
+Partially Billed,Đã xuất hóa đơn một phần
+Partially Delivered,Đã giao một phần
+Partially Paid,Thanh toán một phần
+Party Name,Tên đối tác
+Party Type,Loại đối tác
+Pass,Đạt
+Passed,Đã đạt
+Password,Mật khẩu
+Past Due,Quá hạn
+Payee,Người thụ hưởng
+Payer,Người thanh toán
+Payment Date,Ngày thanh toán
+Payment Due,Hạn thanh toán
+Payment Entries,Phiếu thu / chi
+Payment Entry,Phiếu thu / chi
+Payment History,Lịch sử thanh toán
+Payment Method,Phương thức thanh toán
+Payment Mode,Hình thức thanh toán
+Payment Request,Đề nghị thanh toán
+Payment Schedule,Lịch thanh toán
+Payment Status,Trạng thái thanh toán
+Payment Terms,Điều khoản thanh toán
+Payroll,Bảng lương
+Payroll Entry,Kỳ tính lương
+Payroll Period,Kỳ lương
+Payslip,Phiếu lương
+Payslips,Phiếu lương
+Pending Approvals,Chờ phê duyệt
+Pending Claims,Đề nghị chờ duyệt
+Pending Decisions,Quyết định chờ xử lý
+Pending Delivery,Chờ giao hàng
+Pending Invoices,Hóa đơn chờ xử lý
+Pending Payment,Chờ thanh toán
+Pending Qty,SL còn lại
+Pending Requests,Yêu cầu chờ duyệt
+Pending Review,Chờ xem xét
+Pending Tasks,Công việc chờ xử lý
+People,Nhân sự
+Per Day,Mỗi ngày
+Per Hour,Mỗi giờ
+Per Month,Mỗi tháng
+Per Unit,Mỗi đơn vị
+Percent,Phần trăm
+Percentage,Tỷ lệ %
+Performance,Hiệu quả thực hiện
+Permission,Quyền hạn
+Permissions,Phân quyền
+Personal,Cá nhân
+Petty Cash Entry,Phiếu chi tiền mặt công trường
+Petty Cash Fund,Quỹ tiền mặt công trường
+Phase,Giai đoạn
+Phases,Các giai đoạn
+Phone Number,Số điện thoại
+Photos,Hình ảnh
+Physical Progress,Tiến độ khối lượng thực tế
+Pick,Chọn
+Plan,Kế hoạch
+Planned Cost,Chi phí kế hoạch
+Planned Hours,Giờ công kế hoạch
+Planned Progress,Tiến độ kế hoạch
+Planned Value,Giá trị kế hoạch (PV)
+Planning,Kế hoạch & Tiến độ
+Plant & Equipment,Máy & Thiết bị thi công
+Please select,Vui lòng chọn
+Please wait...,Vui lòng đợi...
+Portfolio Overview,Tổng quan danh mục dự án
+Post,Ghi sổ / Đăng
+Posted,Đã ghi sổ
+Posting Date,Ngày hạch toán
+Preferences,Tùy chọn cá nhân
+Prev,Trước
+Previous,Trước đó
+Previous Claim,Kỳ thanh toán trước
+Previous Month,Tháng trước
+Previous Period,Kỳ trước
+Previous Progress,Lũy kế kỳ trước
+Price,Đơn giá
+Price List,Bảng giá
+Primary,Chính
+Print,In
+Print Format,Mẫu in
+Print View,Chế độ in
+Private,Riêng tư
+Proceed,Tiếp tục
+Process,Xử lý / Quy trình
+Processing...,Đang xử lý...
+Procurement Hub,Trung tâm Mua sắm
+Procurement Status,Trạng thái mua sắm
+Product,Sản phẩm
+Production,Sản xuất / Thi công
+Productivity,Năng suất
+Profile,Hồ sơ cá nhân
+Profit Margin,Biên lợi nhuận
+Profitability,Khả năng sinh lời
+Progress Billing,Thanh toán theo tiến độ (IPC)
+Progress Claim,Hồ sơ thanh toán giai đoạn (IPC)
+Progress Claims,Hồ sơ thanh toán giai đoạn (IPC)
+Progress Update,Cập nhật tiến độ
+Project Budget,Ngân sách dự án
+Project Code,Mã dự án
+Project Cost,Chi phí dự án
+Project Details,Chi tiết dự án
+Project Directory,Danh bạ dự án
+Project Documents,Tài liệu dự án
+Project Execution,Triển khai dự án
+Project Financials,Tài chính dự án
+Project Health,Sức khỏe dự án
+Project Hub,Trung tâm Dự án
+Project Info,Thông tin dự án
+Project Members,Thành viên dự án
+Project Overview,Tổng quan dự án
+Project Performance,Hiệu quả dự án
+Project Phase,Giai đoạn dự án
+Project Plan,Kế hoạch dự án
+Project Portfolio,Danh mục dự án
+Project Progress,Tiến độ dự án
+Project Schedule,Tiến độ thi công dự án
+Project Setup,Thiết lập dự án
+Project Site,Công trường dự án
+Project Stage,Giai đoạn dự án
+Project Stages,Các giai đoạn dự án
+Project Status,Trạng thái dự án
+Project Summary,Tóm tắt dự án
+Project Template,Mẫu dự án
+Project Templates,Các mẫu dự án
+Project Timeline,Tiến độ tổng thể dự án
+Project Types,Các loại hình dự án
+Project Value,Giá trị dự án
+Properties,Thuộc tính
+Proposal,Đề xuất / Hồ sơ dự thầu
+Public,Công khai
+Publish,Công bố / Phát hành
+Published,Đã phát hành
+Punch List,Danh mục lỗi cần khắc phục (Punch List)
+Purchase,Mua hàng
+Purchase Invoices,Hóa đơn mua hàng
+Purchase Request,Yêu cầu mua hàng (PR)
+Purchase Requests,Yêu cầu mua hàng (PR)
+Purchased,Đã mua
+Purchasing,Mua sắm
+QC,Kiểm soát chất lượng (QC)
+QC Inspection,Nghiệm thu chất lượng (QC)
+QS / Estimator,Kỹ sư QS / Dự toán
+Qty Ordered,SL đặt hàng
+Qty Received,SL đã nhận
+Qty Remaining,SL còn lại
+Quality,Chất lượng
+Quality & Safety,Chất lượng & An toàn (QA/QC & HSE)
+Quality Control,Kiểm soát chất lượng
+Quarter,Quý
+Quarterly,Hàng quý
+Quick Actions,Thao tác nhanh
+Quick Add,Thêm nhanh
+QuickCreate,Tạo nhanh
+Quick Filter,Lọc nhanh
+Quick Links,Liên kết nhanh
+Quote,Báo giá
+Quoted,Đã báo giá
+Quoted Price,Giá chào
+Quotes,Các báo giá
+Quotation Comparison,So sánh báo giá
+Quotation Date,Ngày báo giá
+Quotation Items,Chi tiết hạng mục báo giá
+Quotation Lines,Các dòng báo giá
+Quotation Total,Tổng giá trị báo giá
+RFI,Yêu cầu làm rõ thông tin (RFI)
+RFIs,Yêu cầu làm rõ thông tin (RFI)
+RFQ,Yêu cầu báo giá (RFQ)
+RFQs,Yêu cầu báo giá (RFQ)
+Rate (VND),Đơn giá (VNĐ)
+Rate Card,Bảng đơn giá chuẩn
+Rate Cards,Bảng đơn giá chuẩn
+Ratio,Tỷ lệ
+Raw Material,Nguyên vật liệu
+Read,Đã đọc
+Read Only,Chỉ xem
+Ready,Sẵn sàng
+Reason for Delay,Nguyên nhân chậm tiến độ
+Recalculate,Tính toán lại
+Receipts,Phiếu thu / Phiếu nhập
+Receivable,Phải thu
+Received Amount,Số tiền đã thu
+Received By,Người nhận
+Received Date,Ngày nhận
+Received Qty,SL đã nhận
+Recent,Gần đây
+Recent Activity,Hoạt động gần đây
+Recent Documents,Chứng từ gần đây
+Recent Projects,Dự án gần đây
+Recent Transactions,Giao dịch gần đây
+Recipient,Người nhận
+Reconcile,Đối chiếu
+Reconciled,Đã đối chiếu
+Reconciliation,Đối chiếu công nợ / ngân hàng
+Record,Bản ghi
+Record Payment,Ghi nhận thanh toán
+Recurring,Định kỳ
+Reference Date,Ngày tham chiếu
+Reference Document,Chứng từ tham chiếu
+Reference No,Số tham chiếu
+Reference Number,Số tham chiếu
+Refresh,Làm mới
+Refund,Hoàn tiền
+Region,Khu vực
+Reject Selected,Từ chối mục đã chọn
+Rejected By,Người từ chối
+Related,Liên quan
+Related Documents,Chứng từ liên quan
+Release,Giải tỏa / Phát hành
+Released,Đã giải tỏa
+Remaining,Còn lại
+Remaining Balance,Số dư còn lại
+Remaining Budget,Ngân sách còn lại
+Remaining Qty,Khối lượng còn lại
+Remark,Ghi chú
+Reminder,Nhắc nhở
+Remove filter,Xóa bộ lọc
+Reorder,Đặt hàng lại / Sắp xếp lại
+Reorder Level,Mức tồn kho tối thiểu
+Repair,Sửa chữa
+Repeat,Lặp lại
+Replace,Thay thế
+Reply,Trả lời
+Report Date,Ngày báo cáo
+Report Type,Loại báo cáo
+Reported By,Người báo cáo
+Reports & Analytics,Báo cáo & Phân tích
+Request for Quotation,Yêu cầu báo giá (RFQ)
+Request Type,Loại yêu cầu
+Requested Qty,SL yêu cầu
+Requester,Người đề xuất
+Requests,Các yêu cầu
+Required,Bắt buộc
+Required By,Cần trước ngày
+Required Date,Ngày cần hàng
+Required Qty,SL cần thiết
+Requisition,Đề xuất mua hàng / Cấp vật tư
+Reset Filters,Đặt lại bộ lọc
+Resolve,Giải quyết
+Resolved,Đã giải quyết
+Resources,Nguồn lực
+Result,Kết quả
+Results,Kết quả
+Retainage,Tiền giữ lại bảo hành
+Retention Amount,Số tiền giữ lại bảo hành
+Retention Released,Đã giải tỏa bảo hành
+Returned,Đã hoàn trả
+Revenue,Doanh thu
+Revenue Recognized,Doanh thu được ghi nhận
+Reverse,Đảo bút toán
+Reviewed,Đã xem xét
+Reviewed By,Người xem xét
+Reviewer,Người duyệt
+Revised Budget,Ngân sách sau điều chỉnh
+Revised Contract,Giá trị HĐ sau điều chỉnh
+Revised End Date,Ngày kết thúc điều chỉnh
+Revision History,Lịch sử sửa đổi
+Risk,Rủi ro
+Risk Level,Mức độ rủi ro
+Risks,Các rủi ro
+Role Profile,Nhóm quyền / Vai trò
+Root,Gốc
+Row,Dòng
+Rows per page,Số dòng mỗi trang
+Run,Chạy
+Run Report,Chạy báo cáo
+Running Balance,Số dư lũy kế
+Safety,An toàn lao động (HSE)
+Safety Incident,Sự cố an toàn
+Safety Inspection,Kiểm tra an toàn
+Salary,Tiền lương
+Salary Slip,Phiếu lương
+Salary Structure,Cơ cấu lương
+Sales,Bán hàng / Doanh thu
+Sales Invoice,Hóa đơn bán hàng / Đợt thanh toán
+Sales Invoices,Hóa đơn bán hàng
+Sales Order,Đơn đặt hàng bán / Hợp đồng
+Save & Submit,Lưu & Trình duyệt
+Save Changes,Lưu thay đổi
+Save Draft,Lưu nháp
+Saving...,Đang lưu...
+Schedule Health,Tình trạng tiến độ
+Schedule Variance,Chênh lệch tiến độ (SV)
+Scheduled,Đã lên lịch
+Scope of Work,Phạm vi công việc (SOW)
+Score,Điểm đánh giá
+Scrap,Phế liệu / Hủy bỏ
+Search,Tìm kiếm
+Search...,Tìm kiếm...
+Search anything...,Tìm kiếm mọi thứ...
+"Search projects, documents, actions...","Tìm dự án, chứng từ, thao tác..."
+Section,Phần / Hạng mục
+Sections,Các phần / Hạng mục
+Security,Bảo mật
+See All,Xem tất cả
+Select...,Chọn...
+Select Company,Chọn công ty
+Select Cost Code,Chọn mã chi phí
+Select Customer,Chọn khách hàng
+Select Date,Chọn ngày
+Select Item,Chọn vật tư / hạng mục
+Select Project,Chọn dự án
+Select Role,Chọn vai trò
+Select Supplier,Chọn nhà cung cấp
+Select Task,Chọn công việc
+Select Trade,Chọn hạng mục / nhà thầu
+Select User,Chọn người dùng
+Select Warehouse,Chọn kho
+Selected,Đã chọn
+Send,Gửi
+Send for Approval,Trình phê duyệt
+Sent,Đã gửi
+Sequence,Thứ tự
+Serial No,Số sê-ri (Serial)
+Service,Dịch vụ
+Services,Dịch vụ
+Set,Thiết lập
+Set as Default,Đặt làm mặc định
+Settings Hub,Trung tâm Cài đặt
+Settlement,Tất toán / Quyết toán
+Severity,Mức độ nghiêm trọng
+Share,Chia sẻ
+Shared,Đã chia sẻ
+Shift,Ca làm việc
+Shipping,Vận chuyển
+Shipping Address,Địa chỉ giao hàng
+Shortage,Thiếu hụt
+Show All,Hiển thị tất cả
+Show Details,Hiển thị chi tiết
+Show Less,Thu gọn
+Show More,Xem thêm
+Showing,Đang hiển thị
+Sign In,Đăng nhập
+Sign Out,Đăng xuất
+Signature,Chữ ký
+Signed,Đã ký
+Signed Date,Ngày ký
+Simple,Đơn giản
+Site Address,Địa chỉ công trường
+Site Diary,Nhật ký công trường
+Site Engineer,Kỹ sư hiện trường
+Site Expense,Chi phí công trường
+Site Expenses,Chi phí công trường
+Site Inspection,Nghiệm thu hiện trường
+Site Instruction,Chỉ thị công trường (SI)
+Site Log,Nhật ký công trường
+Site Logs,Nhật ký công trường
+Site Manager,Chỉ huy trưởng công trường
+Site Operations,Vận hành công trường
+Site Photo,Ảnh hiện trường
+Site Photos,Ảnh hiện trường
+Site Request,Yêu cầu từ công trường
+Site Supervisor,Giám sát công trường
+Site Warehouse,Kho công trường
+Skill,Bậc thợ / Kỹ năng
+Slip,Phiếu
+Snag,Lỗi hoàn thiện (Snag)
+Snag List,Danh sách lỗi hoàn thiện
+Sort By,Sắp xếp theo
+Sort ascending,Sắp xếp tăng dần
+Sort descending,Sắp xếp giảm dần
+Source Warehouse,Kho xuất
+Specification,Quy cách / Thông số kỹ thuật
+Specifications,Thông số kỹ thuật
+Spent,Đã chi
+Spent To Date,Lũy kế đã chi
+Sqm,m²
+Stage Progress,Tiến độ giai đoạn
+Standard,Tiêu chuẩn
+Standard Rate,Đơn giá tiêu chuẩn
+Start Time,Giờ bắt đầu
+Started,Đã bắt đầu
+Statement,Bảng sao kê / Đối chiếu
+Statement of Account,Bảng đối chiếu công nợ
+Statistics,Thống kê
+Step,Bước
+Stock Balance,Số dư tồn kho
+Stock Entries,Phiếu xuất / nhập kho
+Stock Entry,Phiếu xuất / nhập kho
+Stock Entry Type,Loại phiếu kho
+Stock In,Nhập kho
+Stock Ledger,Sổ cái kho
+Stock Level,Mức tồn kho
+Stock Movement,Biến động tồn kho
+Stock Out,Xuất kho
+Stock Qty,Số lượng tồn kho
+Stock Reconciliation,Kiểm kê kho
+Stock Transfer,Chuyển kho
+Stock UOM,Đơn vị tính tồn kho
+Stock Value,Giá trị tồn kho
+Stop,Dừng
+Store,Kho vật tư
+Storekeeper,Thủ kho
+Street,Đường / Phố
+Structure,Kết cấu / Cơ cấu
+Sub-Project,Dự án thành phần
+Subcontract Agreement,Hợp đồng giao khoán thầu phụ
+Subcontract Claim,Hồ sơ thanh toán thầu phụ
+Subcontract Claims,Hồ sơ thanh toán thầu phụ
+Subcontract Order,Đơn giao khoán thầu phụ
+Subcontract Package,Gói thầu phụ
+Subcontract Work,Công tác thầu phụ
+Subcontractor Claim,Thanh toán nhà thầu phụ
+Subcontractor Claims,Thanh toán nhà thầu phụ
+Subcontractor Contract,Hợp đồng thầu phụ
+Subcontractor Contracts,Hợp đồng thầu phụ
+Subcontractor IPC,IPC Nhà thầu phụ
+Subcontractor Payment,Thanh toán thầu phụ
+Subcontracts,Hợp đồng thầu phụ
+Submittal,Hồ sơ đệ trình
+Submittals,Hồ sơ đệ trình
+Submit Claim,Trình duyệt thanh toán
+Submit for Approval,Trình phê duyệt
+Submitted By,Người trình
+Submitted On,Ngày trình
+Submitting...,Đang trình duyệt...
+Success,Thành công
+Successful,Thành công
+Summary,Tổng hợp / Tóm tắt
+Summary View,Chế độ tổng hợp
+Supervisor,Giám sát
+Supplemental,Bổ sung
+Supplier Invoice,Hóa đơn nhà cung cấp
+Supplier Invoices,Hóa đơn nhà cung cấp
+Supplier Name,Tên nhà cung cấp
+Supplier Quotation,Báo giá nhà cung cấp
+Supplier Quotations,Báo giá nhà cung cấp
+Supply,Cung cấp
+Support,Hỗ trợ
+Switch,Chuyển đổi
+Switch Company,Chuyển đổi công ty
+Switch Role,Chuyển đổi vai trò
+Sync,Đồng bộ
+System Role,Vai trò hệ thống
+System Settings,Cài đặt hệ thống
+System User,Người dùng hệ thống
+Table,Bảng
+Tag,Thẻ (Tag)
+Tags,Các thẻ
+Target,Mục tiêu / Đích
+Target Cost,Chi phí mục tiêu
+Target Date,Ngày mục tiêu
+Target Warehouse,Kho nhập
+Task Description,Mô tả công việc
+Task List,Danh sách công việc
+Task Name,Tên công việc
+Task Progress,Tiến độ công việc
+Task Status,Trạng thái công việc
+Team Lead,Trưởng nhóm
+Team Members,Thành viên đội dự án
+Technical,Kỹ thuật
+Temperature,Nhiệt độ
+Templates,Các biểu mẫu
+Tender Amount,Giá dự thầu
+Tender BOQ,BOQ Mời thầu / Dự thầu
+Tender Code,Mã gói thầu
+Tender Comparison,So sánh hồ sơ thầu
+Tender Date,Ngày mở thầu
+Tender Details,Chi tiết gói thầu
+Tender Documents,Hồ sơ mời thầu
+Tender Evaluation,Đánh giá hồ sơ thầu
+Tender Hub,Trung tâm Đấu thầu
+Tender Item,Hạng mục mời thầu
+Tender Items,Các hạng mục mời thầu
+Tender Line,Dòng mời thầu
+Tender Lines,Các dòng mời thầu
+Tender Name,Tên gói thầu
+Tender Package,Gói thầu
+Tender Packages,Các gói thầu
+Tender Price,Giá dự thầu
+Tender Section,Phần / Hạng mục gói thầu
+Tender Sections,Các phần của gói thầu
+Tender Status,Trạng thái đấu thầu
+Tender Submission,Nộp hồ sơ dự thầu
+Tender Summary,Tổng hợp gói thầu
+Tender Value,Giá trị gói thầu
+Tendering,Đấu thầu
+Terms and Conditions,Điều khoản và Điều kiện
+Theme,Giao diện
+This Month,Tháng này
+This Quarter,Quý này
+This Week,Tuần này
+This Year,Năm nay
+Threshold,Ngưỡng cảnh báo
+Time,Thời gian
+Time Log,Nhật ký thời gian
+Time Logs,Nhật ký thời gian
+Time Sheet,Bảng chấm công giờ
+Timesheet,Bảng chấm công
+Timesheets,Bảng chấm công
+To Be Billed,Chưa lập hóa đơn
+To Be Delivered,Chờ giao hàng
+To Be Paid,Chờ thanh toán
+To Be Received,Chờ nhận hàng
+To Date,Đến ngày / Lũy kế đến nay
+To Do,Việc cần làm
+To Warehouse,Đến kho
+To-Do,Việc cần làm
+To-Dos,Việc cần làm
+Today's Attendance,Chấm công hôm nay
+Today's Logs,Nhật ký hôm nay
+Today's Tasks,Công việc hôm nay
+Toggle,Bật / Tắt
+Tool,Công cụ / Dụng cụ
+Tools,Công cụ & Dụng cụ
+Top,Hàng đầu / Đầu trang
+Total Billed,Tổng đã xuất hóa đơn
+Total Budget,Tổng ngân sách
+Total Claimed,Tổng đã đề nghị thanh toán
+Total Committed,Tổng chi phí cam kết
+Total Contract,Tổng giá trị hợp đồng
+Total Cost,Tổng chi phí
+Total Credit,Tổng Có
+Total Days,Tổng số ngày
+Total Debit,Tổng Nợ
+Total Deduction,Tổng khấu trừ
+Total Deductions,Tổng các khoản khấu trừ
+Total Expenses,Tổng chi phí
+Total Hours,Tổng số giờ
+Total Invoiced,Tổng đã lập hóa đơn
+Total Items,Tổng số hạng mục
+Total Lines,Tổng số dòng
+Total Margin,Tổng lợi nhuận gộp
+Total Net Pay,Tổng thực lĩnh
+Total Outstanding,Tổng công nợ còn lại
+Total Paid,Tổng đã thanh toán
+Total Payable,Tổng phải trả
+Total Price,Tổng giá trị
+Total Projects,Tổng số dự án
+Total Quantity,Tổng số lượng
+Total Receivable,Tổng phải thu
+Total Received,Tổng đã thu / đã nhận
+Total Retention,Tổng tiền giữ lại bảo hành
+Total Revenue,Tổng doanh thu
+Total Spent,Tổng đã chi
+Total Tax,Tổng tiền thuế
+Total Tasks,Tổng số công việc
+Total Variations,Tổng giá trị phát sinh (VO)
+Total Workers,Tổng quân số
+Track,Theo dõi
+Tracking,Theo dõi
+Trade Category,Nhóm hạng mục thi công
+Trade Package,Gói hạng mục thi công
+Trades,Các hạng mục thi công / Bộ môn
+Transaction,Giao dịch
+Transaction Date,Ngày giao dịch
+Transaction Type,Loại giao dịch
+Transfer,Điều chuyển
+Transfer Date,Ngày điều chuyển
+Transfer Qty,SL điều chuyển
+Trial Balance,Bảng cân đối số phát sinh
+Type to search...,Nhập để tìm kiếm...
+UOMs,Đơn vị tính (ĐVT)
+Unauthorized,Không được phép
+Unbilled,Chưa xuất hóa đơn
+Under Budget,Trong ngân sách
+Under Review,Đang xem xét
+Unexpected error,Lỗi không xác định
+Unreconciled,Chưa đối chiếu
+Unsaved Changes,Thay đổi chưa lưu
+Untitled,Chưa đặt tên
+Up to Date,Đã cập nhật mới nhất
+Upcoming,Sắp tới
+Upcoming Deadlines,Hạn chót sắp tới
+Upcoming Milestones,Mốc tiến độ sắp tới
+Update,Cập nhật
+Update Progress,Cập nhật tiến độ
+Update Status,Cập nhật trạng thái
+Updated By,Người cập nhật
+Updated On,Ngày cập nhật
+Updating...,Đang cập nhật...
+Upload,Tải lên
+Upload File,Tải tệp lên
+Upload Photo,Tải ảnh lên
+Upload Photos,Tải ảnh lên
+Uploading...,Đang tải lên...
+User ID,Mã người dùng
+User Management,Quản lý người dùng
+User Profile,Hồ sơ người dùng
+User Role,Vai trò người dùng
+Users & Access,Người dùng & Quyền truy cập
+Users & Roles,Người dùng & Vai trò
+Utilization,Hiệu suất sử dụng
+VAT,Thuế GTGT (VAT)
+VAT %,% VAT
+VAT Amount,Tiền thuế GTGT (VAT)
+Valid From,Hiệu lực từ
+Valid Till,Hiệu lực đến
+Valid To,Hiệu lực đến
+Valid Until,Có giá trị đến
+Validation Error,Lỗi kiểm tra dữ liệu
+Valuation,Định giá / Nghiệm thu
+Valuation Rate,Đơn giá vốn
+Value of Work Done,Giá trị sản lượng thực hiện
+Variance Amount,Giá trị chênh lệch
+Variation Amount,Giá trị phát sinh
+Variation Order,Lệnh thay đổi / Phát sinh (VO)
+Variation Orders,Các lệnh thay đổi / Phát sinh (VO)
+Vendor,Nhà cung cấp / Thầu phụ
+Vendors,Nhà cung cấp / Thầu phụ
+Verified,Đã xác minh
+Verified By,Người xác minh
+Verify,Xác minh
+Version,Phiên bản
+Version History,Lịch sử phiên bản
+Versions,Các phiên bản
+View All,Xem tất cả
+View Details,Xem chi tiết
+View Document,Xem chứng từ
+View Full Report,Xem báo cáo đầy đủ
+View History,Xem lịch sử
+View Ledger,Xem sổ cái
+View List,Xem danh sách
+View Mode,Chế độ xem
+View More,Xem thêm
+View Only,Chỉ xem
+View PDF,Xem PDF
+View Project,Xem dự án
+View Report,Xem báo cáo
+Visible,Hiển thị
+Visible Workspaces,Không gian làm việc hiển thị
+Volume,Thể tích / Khối lượng
+Voucher,Chứng từ
+Voucher No,Số chứng từ
+Voucher Type,Loại chứng từ
+WBS,Cấu trúc phân chia công việc (WBS)
+WBS Code,Mã WBS
+WBS Level,Cấp WBS
+Wage,Tiền công
+Waiting,Đang chờ
+Waiting for Approval,Đang chờ phê duyệt
+Warehouse,Kho
+Warehouse Name,Tên kho
+Warehouse Type,Loại kho
+Warehouses,Danh sách kho
+Warning,Cảnh báo
+Warnings,Các cảnh báo
+Warranty,Bảo hành
+Warranty Period,Thời gian bảo hành
+Waste,Hao hụt
+Waste %,% Hao hụt
+Weather Condition,Điều kiện thời tiết
+Week,Tuần
+Weekly,Hàng tuần
+Weight,Trọng lượng / Tỷ trọng
+Weight %,Tỷ trọng %
+Weightage,Tỷ trọng
+Welcome,Chào mừng
+Width,Chiều rộng
+Winning Bid,Nhà thầu trúng thầu
+Withholding Tax,Thuế nhà thầu / Khấu trừ tại nguồn
+Work,Công việc / Thi công
+Work Breakdown,Phân chia công việc
+Work Description,Mô tả công việc
+Work Done,Khối lượng đã thực hiện
+Work Progress,Tiến độ thi công
+Workers Present,Quân số có mặt
+Workflow,Quy trình phê duyệt
+Workflow State,Trạng thái quy trình
+Working,Đang làm việc
+Working Days,Số ngày làm việc
+Working Hours,Giờ làm việc
+Workspace Settings,Cài đặt không gian làm việc
+Workspaces,Không gian làm việc
+Write Off,Xóa sổ / Xử lý chênh lệch
+Year,Năm
+Year to Date,Từ đầu năm đến nay (YTD)
+Yearly,Hàng năm
+You have no notifications,Bạn không có thông báo nào
+You have no pending tasks,Bạn không có công việc tồn đọng
+Zone,Khu vực / Phân khu
+Zones,Các phân khu
+projects,dự án
+records,bản ghi
+selected,đã chọn
+Director / Owner,Giám đốc / Chủ đầu tư
+Director,Giám đốc
+PM,QLDA (PM)
+Estimator,Kỹ sư dự toán
+Builds tenders and initial BOQs from drawings and rate analysis.,Lập hồ sơ dự thầu và BOQ ban đầu từ bản vẽ và phân tích đơn giá.
+Quantity Surveyor,Kỹ sư QS
+QS,QS
+"Maintains rates, measurement books, RA bills, and BOQ revisions during execution.","Quản lý đơn giá, sổ đo bóc khối lượng, hồ sơ thanh toán và điều chỉnh BOQ trong quá trình thi công."
+Foreman / Supervisor,Đội trưởng / Giám sát
+Procurement Officer,Chuyên viên mua hàng
+"Converts material requests into POs, manages suppliers and GRN.","Chuyển yêu cầu vật tư thành đơn đặt hàng (PO), quản lý nhà cung cấp và phiếu nhập kho (GRN)."
+Store Keeper,Thủ kho
+"Receives, issues, and reconciles stock at site stores.","Nhập, xuất và đối chiếu tồn kho tại kho công trường."
+Accountant,Kế toán
+"Books vendor and subcontractor payments, petty cash, journals.","Hạch toán thanh toán nhà cung cấp và thầu phụ, quỹ tiền mặt, bút toán nhật ký."
+HR Manager,Trưởng phòng Nhân sự
+Admin,Quản trị viên
+BuildSuite Administrator,Quản trị viên BuildSuite
+BS Admin,Quản trị BS
+To-do,Việc cần làm
+Progress Report,Báo cáo tiến độ
+Task Progress Entries,Nhật ký tiến độ công việc
+Edit Tender,Chỉnh sửa gói thầu
+Edit Quotation,Chỉnh sửa báo giá
+Material Consumption,Tiêu hao vật tư
+Edit Consumption,Chỉnh sửa tiêu hao vật tư
+Edit Work Order,Chỉnh sửa lệnh giao việc
+Edit Measurement Book,Chỉnh sửa sổ đo bóc khối lượng
+Edit Subcontractor Bill,Chỉnh sửa hồ sơ thanh toán thầu phụ
+Scope Change,Thay đổi phạm vi
+Financials,Tài chính
+Core Settings,Cài đặt chung
+Work package,Gói công việc
+Work packages,Các gói công việc
+Stage plan,Kế hoạch giai đoạn
+Stage plans,Kế hoạch giai đoạn
+Change orders,Lệnh thay đổi (SCO)
+Estimate templates,Các mẫu dự toán
+Material request,Yêu cầu vật tư (MR)
+Material requests,Yêu cầu vật tư (MR)
+Purchase orders,Đơn đặt hàng (PO)
+Purchase receipt,Phiếu nhập kho (GRN)
+Purchase receipts,Phiếu nhập kho (GRN)
+Machinery usage,Nhật ký ca máy
+Work orders,Lệnh giao việc (WO)
+Measurement book,Sổ đo bóc khối lượng (MB)
+Measurement books,Sổ đo bóc khối lượng (MB)
+Subcontractor bills,Thanh toán thầu phụ
+Attendance,Chấm công
+Petty cash,Quỹ tiền mặt công trường
+Field attendance,Chấm công công trường
+Field employees,Nhân sự công trường
+Requests to order,Yêu cầu vật tư chờ đặt hàng
+"Child projects under this one. Also needs ""Allow subprojects"" on the project itself.","Các dự án con thuộc dự án này. Cần bật tùy chọn ""Cho phép dự án thành phần"" trên dự án."
+The cost and control breakdown under the project.,Cấu trúc phân chia chi phí và kiểm soát thuộc dự án.
+Every task on the project and its subprojects.,Toàn bộ công việc thuộc dự án và các dự án thành phần.
+"Time-phased stages, their approval state and linked tasks.","Các giai đoạn phân kỳ theo thời gian, trạng thái phê duyệt và công việc liên kết."
+Bill of quantities revisions priced for this project.,Các phiên bản tiên lượng (BOQ) được tính giá cho dự án này.
+Scope change orders raised against the project.,Các lệnh thay đổi phạm vi phát sinh trong dự án.
+"Drawings, contracts and permits held on the project record.","Bản vẽ, hợp đồng và giấy phép lưu trữ trong hồ sơ dự án."
+People assigned to the project alongside the project manager.,Nhân sự được phân công vào dự án cùng với Quản lý dự án.
+Equals,Bằng (=)
+Not Equals,Khác (!=)
+Like,Chứa (Like)
+Not Like,Không chứa
+Not In,Không thuộc (Not In)
+Is,Trạng thái (Is)
+Greater Than,Lớn hơn (>)
+Less Than,Nhỏ hơn (<)
+Greater Than Or Equal To,Lớn hơn hoặc bằng (≥)
+Less Than Or Equal To,Nhỏ hơn hoặc bằng (≤)
+Between,Trong khoảng
+Timespan,Khoảng thời gian
+Before,Trước ngày
+After,Sau ngày
+On or Before,Trước hoặc trong ngày
+On or After,Từ ngày trở đi
+last week,tuần trước
+last month,tháng trước
+last quarter,quý trước
+last 6 months,6 tháng qua
+last year,năm trước
+yesterday,hôm qua
+today,hôm nay
+tomorrow,ngày mai
+this week,tuần này
+this month,tháng này
+this quarter,quý này
+this year,năm nay
+next week,tuần tới
+next month,tháng tới
+next quarter,quý tới
+next 6 months,6 tháng tới
+next year,năm tới
+Not Set,Chưa có giá trị
+Type a value and press Enter,Nhập giá trị và nhấn Enter
+Apply,Áp dụng
+Descending,Giảm dần
+Ascending,Tăng dần
+Sort unavailable,Không hỗ trợ sắp xếp
+Sort field,Trường sắp xếp
+Sort by,Sắp xếp theo
+No matches.,Không có kết quả phù hợp.
+Not submitted yet.,Chưa trình duyệt.
+Open row detail,Mở chi tiết dòng
+No rows yet.,Chưa có dòng nào.
+Row detail,Chi tiết dòng
+"Try a project, a person, a supplier, or a document number.","Thử nhập tên dự án, nhân sự, nhà cung cấp hoặc số chứng từ."
+Type to search,Nhập để tìm kiếm
+"Jump to a list or report, or find a record by name or number.","Đi nhanh tới danh sách, báo cáo hoặc tìm bản ghi theo tên/mã số."
+Enter to open,Enter để mở
+Esc to close,Esc để đóng
+You don't have access to this,Bạn không có quyền truy cập mục này
+Your account doesn't have permission to view this. Contact your administrator to request access.,Tài khoản của bạn không có quyền xem nội dung này. Vui lòng liên hệ quản trị viên để được cấp quyền.
+Back to Home,Quay về Trang chủ
+All changes saved,Đã lưu mọi thay đổi
+Not Saved,Chưa lưu
+"Print, or save as PDF from the print dialog",In hoặc lưu thành PDF từ hộp thoại in
+All caught up — no pending decisions,Đã xử lý hết — không có quyết định chờ duyệt
+Columns ▾,Cột ▾
+Next ›,Tiếp ›
+‹ Prev,‹ Trước
+"Executive oversight — portfolio P&L, approvals at threshold, strategic decisions.","Giám sát điều hành — lãi/lỗ danh mục dự án, phê duyệt vượt hạn mức, quyết định chiến lược."
+"Owns project delivery — schedule, scope, budget, day-to-day approvals.","Chịu trách nhiệm triển khai dự án — tiến độ, phạm vi, ngân sách, phê duyệt hàng ngày."
+"Runs the site day-to-day — tasks, material requests, daily diary, scope flags.","Điều hành công trường hàng ngày — công việc, yêu cầu vật tư, nhật ký thi công, cảnh báo phạm vi."
+"Field supervisor — crews, overtime, on-site execution.","Giám sát hiện trường — tổ đội, tăng ca, thi công trực tiếp tại công trường."
+"Office-staff HR — employees, leave, salary, appraisal (site labour lives in Workforce).","Nhân sự khối văn phòng — nhân viên, nghỉ phép, lương, đánh giá (nhân công công trường thuộc phân hệ Nhân lực)."
+"Full access — Frappe-platform admin: sites, apps, backups, integrations, troubleshooting.","Toàn quyền truy cập — quản trị nền tảng Frappe: trang web, ứng dụng, sao lưu, tích hợp, xử lý sự cố."
+"BuildSuite-product admin — Workspace Structure, Site Execution Settings, Project Type templates, Pro license. The ""BuildSuite owner"" at a customer org.","Quản trị sản phẩm BuildSuite — Cấu trúc không gian làm việc, Cài đặt thi công, Mẫu loại dự án, bản quyền Pro."
+Search fields…,Tìm trường dữ liệu…
+Select…,Chọn…
+Add…,Thêm…
+Running report…,Đang chạy báo cáo…
+Search this report…,Tìm trong báo cáo này…
+"Search anything — a project, a task, an order number...","Tìm kiếm bất kỳ — dự án, công việc, mã chứng từ..."
+↑↓ to move,↑↓ di chuyển

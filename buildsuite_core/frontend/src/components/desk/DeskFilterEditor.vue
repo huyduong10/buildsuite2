@@ -221,7 +221,7 @@ function apply() {
 
 			<!-- Condition -->
 			<DeskSelect v-model="condition" class="!w-32 flex-shrink-0">
-				<option v-for="[op, label] in conditions" :key="op" :value="op">{{ label }}</option>
+				<option v-for="[op, label] in conditions" :key="op" :value="op">{{ __(label) }}</option>
 			</DeskSelect>
 
 			<!-- Value -->
@@ -239,23 +239,23 @@ function apply() {
 					v-model="value"
 					type="text"
 					class="desk-input w-full"
-					placeholder="Value"
+					:placeholder="__('Value')"
 				/>
 				<DeskSelect v-else-if="valueKind === 'select'" v-model="value">
 					<option value="">—</option>
-					<option v-for="o in selectOptions" :key="o" :value="o">{{ o }}</option>
+					<option v-for="o in selectOptions" :key="o" :value="o">{{ __(o) }}</option>
 				</DeskSelect>
 				<DeskSelect v-else-if="valueKind === 'check'" v-model="value">
-					<option value="1">Yes</option>
-					<option value="0">No</option>
+					<option value="1">{{ __("Yes") }}</option>
+					<option value="0">{{ __("No") }}</option>
 				</DeskSelect>
 				<DeskSelect v-else-if="valueKind === 'isset'" v-model="value">
-					<option value="set">Set</option>
-					<option value="not set">Not Set</option>
+					<option value="set">{{ __("Set") }}</option>
+					<option value="not set">{{ __("Not Set") }}</option>
 				</DeskSelect>
 				<DeskSelect v-else-if="valueKind === 'timespan'" v-model="value">
 					<option value="">—</option>
-					<option v-for="t in TIMESPANS" :key="t" :value="t">{{ t }}</option>
+					<option v-for="t in TIMESPANS" :key="t" :value="t">{{ __(t) }}</option>
 				</DeskSelect>
 				<div v-else-if="valueKind === 'between'" class="flex items-center gap-1">
 					<input v-model="value[0]" type="date" class="desk-input flex-1" />
@@ -279,7 +279,7 @@ function apply() {
 					v-model="value"
 					type="number"
 					class="desk-input w-full"
-					placeholder="Value"
+					:placeholder="__('Value')"
 				/>
 				<div v-else-if="valueKind === 'multi'" class="space-y-1">
 					<div v-if="value.length" class="flex flex-wrap gap-1">
@@ -289,11 +289,11 @@ function apply() {
 							class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-ink-100 text-ink-700"
 							style="border-radius: 9999px"
 						>
-							{{ item }}
+							{{ __(item) }}
 							<button
 								type="button"
 								class="text-ink-500 hover:text-ink-800 leading-none"
-								aria-label="Remove"
+								:aria-label="__('Remove')"
 								@click="removeMultiItem(i)"
 							>
 								×
@@ -314,14 +314,14 @@ function apply() {
 						:model-value="''"
 						@update:model-value="addMultiItem"
 					>
-						<option value="">Add…</option>
-						<option v-for="o in selectOptions" :key="o" :value="o">{{ o }}</option>
+						<option value="">{{ __("Add…") }}</option>
+						<option v-for="o in selectOptions" :key="o" :value="o">{{ __(o) }}</option>
 					</DeskSelect>
 					<input
 						v-else
 						type="text"
 						class="desk-input w-full"
-						placeholder="Type a value and press Enter"
+						:placeholder="__('Type a value and press Enter')"
 						@keyup.enter="addMultiFromInput"
 					/>
 				</div>
@@ -330,7 +330,7 @@ function apply() {
 					v-model="value"
 					type="text"
 					class="desk-input w-full"
-					placeholder="Value"
+					:placeholder="__('Value')"
 					@keyup.enter="apply"
 				/>
 			</div>
@@ -342,7 +342,7 @@ function apply() {
 				class="text-xs px-3 py-1.5 border border-ink-200 bg-white hover:bg-ink-50 text-ink-700 rounded-md"
 				@click="emit('cancel')"
 			>
-				Cancel
+				{{ __("Cancel") }}
 			</button>
 			<button
 				type="button"
@@ -351,7 +351,7 @@ function apply() {
 				:class="{ 'opacity-50 cursor-not-allowed': !canApply }"
 				@click="apply"
 			>
-				Apply
+				{{ __("Apply") }}
 			</button>
 		</div>
 	</div>

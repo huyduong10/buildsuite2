@@ -15,7 +15,7 @@ defineProps({
 		class="border-t border-ink-200 px-3 py-2 flex items-center gap-3 flex-wrap text-xs text-ink-600"
 	>
 		<div class="flex items-center gap-2">
-			<span class="text-ink-500">Rows per page</span>
+			<span class="text-ink-500">{{ __("Rows per page") }}</span>
 			<select
 				data-test="pager-size"
 				:value="pager.pageSize"
@@ -30,8 +30,8 @@ defineProps({
 		</div>
 
 		<div class="text-ink-500 tabular-nums">
-			Showing
-			<span class="text-ink-800 font-medium">{{ pager.rangeStart }}–{{ pager.rangeEnd }}</span> of
+			{{ __("Showing") }}
+			<span class="text-ink-800 font-medium">{{ pager.rangeStart }}–{{ pager.rangeEnd }}</span> {{ __("of") }}
 			<span class="text-ink-800 font-medium">{{ pager.totalRows }}</span>
 		</div>
 
@@ -44,10 +44,10 @@ defineProps({
 				:disabled="pager.page <= 1"
 				@click="pager.prev()"
 			>
-				‹ Prev
+				{{ __("‹ Prev") }}
 			</button>
 			<span class="text-ink-500 tabular-nums px-2">
-				Page <span class="text-ink-800 font-medium">{{ pager.page }}</span> of
+				{{ __("Page") }} <span class="text-ink-800 font-medium">{{ pager.page }}</span> {{ __("of") }}
 				<span class="text-ink-800 font-medium">{{ pager.totalPages }}</span>
 			</span>
 			<button
@@ -58,7 +58,7 @@ defineProps({
 				:disabled="pager.page >= pager.totalPages"
 				@click="pager.next()"
 			>
-				Next ›
+				{{ __("Next ›") }}
 			</button>
 		</div>
 	</div>

@@ -206,14 +206,14 @@ onBeforeUnmount(() => {
 			:disabled="disabled"
 			@click="open"
 		>
-			<span v-if="triggerLabel" class="truncate text-ink-900">{{ triggerLabel }}</span>
-			<span v-else class="truncate text-ink-400">{{ placeholder }}</span>
+			<span v-if="triggerLabel" class="truncate text-ink-900">{{ __(triggerLabel) }}</span>
+			<span v-else class="truncate text-ink-400">{{ __(placeholder) }}</span>
 			<span class="flex items-center gap-1 flex-shrink-0">
 				<button
 					v-if="allowClear && hasValue"
 					type="button"
 					class="text-ink-400 hover:text-danger-700 text-xs leading-none px-1"
-					aria-label="Clear"
+					:aria-label="__('Clear')"
 					@click.stop="clear"
 				>
 					×
@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
 							v-model="search"
 							type="text"
 							class="desk-input"
-							:placeholder="searchPlaceholder"
+							:placeholder="__(searchPlaceholder)"
 							@keydown="onSearchKeydown"
 						/>
 					</div>
@@ -256,7 +256,7 @@ onBeforeUnmount(() => {
 									v-if="row.type === 'group'"
 									class="px-3 py-1 text-[10px] uppercase tracking-wider text-ink-500 font-medium bg-ink-50"
 								>
-									{{ row.label }}
+									{{ __(row.label) }}
 								</div>
 								<button
 									v-else
@@ -272,11 +272,11 @@ onBeforeUnmount(() => {
 									@mouseenter="highlightedIndex = row._idx"
 								>
 									<span class="min-w-0 flex-1">
-										<span class="truncate block">{{ row.label }}</span>
+										<span class="truncate block">{{ __(row.label) }}</span>
 										<span
 											v-if="row.hint"
 											class="text-[11px] text-ink-500 truncate block"
-											>{{ row.hint }}</span
+											>{{ __(row.hint) }}</span
 										>
 									</span>
 									<span
@@ -288,7 +288,7 @@ onBeforeUnmount(() => {
 							</template>
 						</template>
 						<div v-else class="px-3 py-3 text-xs text-ink-400 italic text-center">
-							No matches.
+							{{ __("No matches.") }}
 						</div>
 					</div>
 				</div>

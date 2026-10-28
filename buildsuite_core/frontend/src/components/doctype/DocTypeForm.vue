@@ -339,18 +339,18 @@ const DANGER =
 			class="mb-4 flex items-center gap-2"
 		>
 			<StatusBadge :status="statusLabel" />
-			<span v-if="isDraft" class="text-[11px] text-ink-500">Not submitted yet.</span>
+			<span v-if="isDraft" class="text-[11px] text-ink-500">{{ __("Not submitted yet.") }}</span>
 		</div>
 
 		<div
 			v-if="formError"
 			class="mb-4 px-4 py-2.5 bg-danger-50 border border-danger-200 rounded-md text-xs text-danger-700 whitespace-pre-line"
 		>
-			{{ formError }}
+			{{ __(formError) }}
 		</div>
 
 		<div v-if="metaLoading || loading" class="text-sm text-ink-500 py-10 text-center">
-			Loading…
+			{{ __("Loading…") }}
 		</div>
 
 		<form v-else @submit.prevent="onSave">
@@ -371,7 +371,7 @@ const DANGER =
 					"
 					@click="activeTab = ti"
 				>
-					{{ t.label || "Details" }}
+					{{ __(t.label || "Details") }}
 				</button>
 			</div>
 
@@ -380,7 +380,7 @@ const DANGER =
 					v-if="s.label"
 					class="text-[11px] font-semibold uppercase tracking-wider text-ink-700 mb-3 pb-1.5 border-b border-ink-200"
 				>
-					{{ s.label }}
+					{{ __(s.label) }}
 				</h3>
 
 				<div
@@ -405,7 +405,7 @@ const DANGER =
 
 				<div v-for="t in s.tables" :key="t.fieldname" class="mb-4">
 					<div class="text-[11px] font-medium text-ink-700 mb-1.5">
-						{{ t.label || t.fieldname }}<span v-if="t.reqd" class="text-danger-600"> *</span>
+						{{ __(t.label || t.fieldname) }}<span v-if="t.reqd" class="text-danger-600"> *</span>
 					</div>
 					<DocTypeChildTable
 						v-model="form[t.fieldname]"
@@ -425,7 +425,7 @@ const DANGER =
 					class="desk-save-btn"
 					:disabled="busy"
 				>
-					{{ busy ? "Creating…" : "Create" }}
+					{{ busy ? __("Creating…") : __("Create") }}
 				</button>
 
 				<!-- Draft: Save is primary while dirty; once clean, Submit takes over. -->
@@ -436,7 +436,7 @@ const DANGER =
 						class="desk-save-btn"
 						:disabled="busy || !dirty"
 					>
-						{{ busy ? "Saving…" : "Save" }}
+						{{ busy ? __("Saving…") : __("Save") }}
 					</button>
 					<button
 						v-if="submittable && perms.submit"
@@ -445,7 +445,7 @@ const DANGER =
 						:disabled="busy"
 						@click="onSubmit"
 					>
-						Submit
+						{{ __("Submit") }}
 					</button>
 					<button
 						v-if="perms.delete"
@@ -454,7 +454,7 @@ const DANGER =
 						:disabled="busy"
 						@click="onDelete"
 					>
-						Delete
+						{{ __("Delete") }}
 					</button>
 				</template>
 
@@ -467,7 +467,7 @@ const DANGER =
 						:disabled="busy"
 						@click="onCancel"
 					>
-						Cancel
+						{{ __("Cancel") }}
 					</button>
 				</template>
 
@@ -480,7 +480,7 @@ const DANGER =
 						:disabled="busy"
 						@click="onAmend"
 					>
-						Amend
+						{{ __("Amend") }}
 					</button>
 					<button
 						v-if="perms.delete"
@@ -489,11 +489,11 @@ const DANGER =
 						:disabled="busy"
 						@click="onDelete"
 					>
-						Delete
+						{{ __("Delete") }}
 					</button>
 				</template>
 
-				<button type="button" :class="SECONDARY" @click="goList">Back</button>
+				<button type="button" :class="SECONDARY" @click="goList">{{ __("Back") }}</button>
 			</div>
 		</form>
 	</div>

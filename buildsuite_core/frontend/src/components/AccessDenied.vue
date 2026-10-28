@@ -34,15 +34,15 @@ defineProps({
 				</svg>
 			</div>
 			<p class="mt-4 text-[11px] uppercase tracking-[0.18em] text-danger-700 font-semibold">
-				No access
+				{{ __("No access") }}
 			</p>
-			<h2 class="mt-1 text-lg font-semibold text-ink-900 dark:text-ink-100">{{ title }}</h2>
-			<p class="mt-2 text-sm text-ink-500 leading-6">{{ message }}</p>
+			<h2 class="mt-1 text-lg font-semibold text-ink-900 dark:text-ink-100">{{ __(title) }}</h2>
+			<p class="mt-2 text-sm text-ink-500 leading-6">{{ __(message) }}</p>
 			<RouterLink
 				:to="backTo"
 				class="mt-6 inline-flex items-center justify-center px-4 py-2 text-sm font-medium border border-ink-300 text-ink-700 rounded-md hover:bg-ink-50 dark:border-ink-600 dark:text-ink-200"
 			>
-				{{ backLabel }}
+				{{ __(backLabel) }}
 			</RouterLink>
 		</div>
 	</div>

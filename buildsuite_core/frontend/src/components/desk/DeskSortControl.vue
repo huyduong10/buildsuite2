@@ -24,7 +24,7 @@ function updateField(event) {
 		<button
 			type="button"
 			class="text-xs text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-2.5 py-1 border-r border-ink-200 disabled:text-ink-300 disabled:hover:bg-white"
-			:title="sortDirection === 'desc' ? 'Descending' : 'Ascending'"
+			:title="sortDirection === 'desc' ? __('Descending') : __('Ascending')"
 			:disabled="!options.length"
 			@click="toggleDirection"
 		>
@@ -36,13 +36,13 @@ function updateField(event) {
 			class="text-xs text-ink-600 bg-white hover:bg-ink-50 pl-2.5 pr-7 py-1 appearance-none"
 			:disabled="!options.length"
 			style="border: none; outline: none; min-width: 9.5rem"
-			:title="!options.length ? 'Sort unavailable' : 'Sort field'"
+			:title="!options.length ? __('Sort unavailable') : __('Sort field')"
 			@change="updateField"
 		>
-			<option v-if="!options.length" value="">Sort unavailable</option>
-			<option v-else-if="!sortField" value="">Sort by</option>
+			<option v-if="!options.length" value="">{{ __("Sort unavailable") }}</option>
+			<option v-else-if="!sortField" value="">{{ __("Sort by") }}</option>
 			<option v-for="option in options" :key="option.value" :value="option.value">
-				{{ option.label }}
+				{{ __(option.label) }}
 			</option>
 		</select>
 

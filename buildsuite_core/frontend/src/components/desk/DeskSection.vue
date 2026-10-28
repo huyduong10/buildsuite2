@@ -27,7 +27,7 @@ const gridClass = computed(
 <template>
 	<section class="mb-6">
 		<div v-if="title" class="mb-1">
-			<h3 class="desk-section-title">{{ title }}</h3>
+			<h3 class="desk-section-title">{{ __(title) }}</h3>
 			<hr class="desk-divider" />
 		</div>
 		<div class="grid gap-x-6 gap-y-3" :class="gridClass">
