@@ -5,4 +5,4 @@ COPY --chown=frappe:frappe . /home/frappe/frappe-bench/apps/buildsuite_core
 
 WORKDIR /home/frappe/frappe-bench
 RUN uv pip install --python env/bin/python -e apps/buildsuite_core || env/bin/pip install -e apps/buildsuite_core
-
+RUN ln -sfn /home/frappe/frappe-bench/apps/buildsuite_core/buildsuite_core/public /home/frappe/frappe-bench/assets/buildsuite_core

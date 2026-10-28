@@ -76,7 +76,7 @@ export async function logout() {
 	} catch (e) {
 		/* ignore — redirect anyway */
 	}
-	window.location.href = `${getFrappeHost()}/login`;
+	window.location.href = getLoginUrl("/");
 }
 
 export function applyBootToWindow(boot) {

@@ -13,6 +13,14 @@ no_cache = 1
 
 
 def get_context():
+	if frappe.session.user == "Guest":
+		from urllib.parse import quote
+
+		path = getattr(getattr(frappe.local, "request", None), "full_path", None) or "/core"
+		path = path.rstrip("?")
+		frappe.local.flags.redirect_location = f"/login?redirect-to={quote(path, safe='/?=&')}"
+		raise frappe.Redirect
+
 	if not has_app_permission():
 		frappe.throw(_("You do not have permission to access BuildSuite Core"), frappe.PermissionError)
 
