@@ -1,0 +1,11 @@
+Department (Phòng ban)	Persona	Login Email	Initial Password	Assigned BuildSuite Roles
+Ban điều hành (Executive)	Director / Owner	director@buildsuite.local	2vr2PEhM1y!7a	BuildSuite Director, BuildSuite Project User
+Quản lý dự án (Project Mgmt)	Project Manager	pm@buildsuite.local	QkWH7riOy2!7a	BuildSuite PM, BuildSuite Project User
+Dự toán - Đấu thầu (Estimating)	Estimator	estimator@buildsuite.local	SD8cW7uziA!7a	BuildSuite Estimator, BuildSuite Project User
+Kỹ sư khối lượng (QS / Cost)	Quantity Surveyor	qs@buildsuite.local	He7Z4SehTs!7a	BuildSuite QS, BuildSuite Project User
+Kỹ thuật thi công (Site Eng.)	Site Engineer	siteengineer@buildsuite.local	FEl9YmGYbI!7a	BuildSuite Site Engineer, BuildSuite Project User
+Giám sát hiện trường (Field)	Foreman / Supervisor	foreman@buildsuite.local	h2mcGptg6X!7a	BuildSuite Foreman, BuildSuite Project User
+Mua sắm - Cung ứng (Procurement)	Procurement Officer	procurement@buildsuite.local	OWlAfUXj8W!7a	BuildSuite Procurement Officer, BuildSuite Project User
+Kho vật tư (Warehouse / Store)	Store Keeper	storekeeper@buildsuite.local	kzbE0H8oDB!7a	BuildSuite Store Keeper, BuildSuite Project User
+Tài chính - Kế toán (Accounting)	Accountant	accountant@buildsuite.local	8UCMwzmEUO!7a	BuildSuite Accountant, BuildSuite Project User
+Hành chính - Nhân sự (HR)	HR Manager	hr@buildsuite.local	IE281Qqsjd!7a	BuildSuite HR Manager, BuildSuite Project User
